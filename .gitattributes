@@ -1,0 +1,4 @@
+# Paksa LF untuk file SQL & Prisma agar checksum migrasi (sha256) konsisten
+# antara dev (Windows) dan container Coolify (Linux). Lihat mariadb-init.sql.
+*.sql text eol=lf
+*.prisma text eol=lf

@@ -61,6 +61,29 @@ Klik **Deploy**. Build akan: `npm ci` → generate Prisma client MySQL →
 
 Cek log pertama: pastikan baris `✔ Admin: ...` muncul, lalu akses domain.
 
+## 6b. Alternatif: init DB manual (copy-paste SQL)
+
+Bila Anda lebih nyaman menyiapkan database secara manual daripada andalkan
+auto-migrate saat container start, gunakan **`mariadb-init.sql`** di root repo.
+
+1. Buat database MariaDB service di Coolify, buka editor SQL-nya (atau `mysql` CLI).
+2. Copy-paste seluruh isi `mariadb-init.sql` lalu jalankan pada database target.
+   File berisi: seluruh `CREATE TABLE` + foreign key, tabel `_prisma_migrations`
+   + penanda migrasi sudah diterapkan (checksum sha256), dan data seed
+   (admin + mapel + kelas contoh).
+3. Deploy aplikasi. Karena migrasi sudah ditandai applied, `prisma migrate deploy`
+   dilewati (no-op) dan `db:seed` upsert admin (sudah ada → no-op). Tidak bentrok.
+
+Akun admin dari SQL: `admin` / `admin123` — **wajib ganti** setelah login.
+Untuk password lain sebelum tempel, generate hash:
+`node -e "console.log(require('bcryptjs').hashSync('PASSWORD_ANDA',10))"`
+lalu ganti string `$2b$...` di INSERT `users`.
+
+> Jika `prisma migrate deploy` melaporkan drift (checksum beda, mis. karena
+> line-ending), jalankan sekali di container:
+> `npx prisma migrate resolve --schema=prisma/prod/schema.prisma --applied 20260721000000_init`
+> lalu restart.
+
 ## 7. Pasca-deploy
 
 - Login sebagai `admin` dengan `ADMIN_PASSWORD` yang Anda set.
