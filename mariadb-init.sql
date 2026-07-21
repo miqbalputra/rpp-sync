@@ -6,8 +6,9 @@
 --   2. Buka editor SQL database itu (atau mysql CLI / phpMyAdmin) pada database target.
 --   3. Copy-paste SELURUH isi file ini lalu jalankan.
 --   4. Deploy aplikasi (Coolify). Saat start, `prisma migrate deploy` akan
---      melihat migrasi `20260721000000_init` sudah tercatat (baris _prisma_migrations
---      di bawah) → dilewati. `db:seed` upsert admin (sudah ada → no-op).
+--      melihat migrasi `20260721000000_init` dan `20260722000000_add_no_rpp` sudah
+--      tercatat (baris _prisma_migrations di bawah) → dilewati. `db:seed` upsert
+--      admin (sudah ada → no-op).
 --
 -- AKUN ADMIN AWAL:
 --   username : admin
@@ -20,12 +21,13 @@
 -- FALLBACK: jika `prisma migrate deploy` di Coolify melaporkan "drift" (checksum
 --   beda), jalankan sekali di container:
 --     npx prisma migrate resolve --schema=prisma/prod/schema.prisma --applied 20260721000000_init
+--     npx prisma migrate resolve --schema=prisma/prod/schema.prisma --applied 20260722000000_add_no_rpp
 --   lalu restart. Ini menandai migrasi sebagai applied tanpa cek checksum.
 --
 -- Idempoten: semua INSERT memakai ON DUPLICATE KEY UPDATE, aman dijalankan ulang.
 -- ============================================================================
 
--- ---------- Skema (sama dengan prisma/prod/migrations/20260721000000_init) ----------
+-- ---------- Skema (init + add_no_rpp) ----------
 
 CREATE TABLE `users` (
     `id` VARCHAR(191) NOT NULL,
@@ -94,6 +96,7 @@ CREATE TABLE `rpp` (
     `guruId` VARCHAR(191) NOT NULL,
     `mapelId` VARCHAR(191) NOT NULL,
     `kelasId` VARCHAR(191) NOT NULL,
+    `noRpp` VARCHAR(191) NULL,
     `materi` VARCHAR(191) NOT NULL,
     `alokasiWaktu` VARCHAR(191) NOT NULL,
     `tujuanPembelajaran` VARCHAR(191) NOT NULL,
@@ -105,6 +108,7 @@ CREATE TABLE `rpp` (
     `updatedAt` DATETIME(3) NOT NULL,
 
     INDEX `rpp_guruId_idx`(`guruId`),
+    INDEX `rpp_guruId_noRpp_idx`(`guruId`, `noRpp`),
     INDEX `rpp_mapelId_kelasId_idx`(`mapelId`, `kelasId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -235,6 +239,16 @@ VALUES (
     '6ed3c3bb-1bf6-4481-adcc-9869dfa34268',
     '6c8c0d9207430b1ef28b3e9caa5011b421c982fe80e7f009a641871b9fbc4d0a',
     NOW(3), '20260721000000_init', NULL, NULL, NOW(3), 1
+)
+ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
+
+-- Penanda migrasi add_no_rpp sudah diterapkan (checksum = sha256 isi
+-- prisma/prod/migrations/20260722000000_add_no_rpp/migration.sql).
+INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
+VALUES (
+    'afec453f-4386-4b3a-b56c-65f6864c6466',
+    '0a7e451c90d11ce2a81641d9e0caed217a2f1771533f7fe2b7c3af52e1000b71',
+    NOW(3), '20260722000000_add_no_rpp', NULL, NULL, NOW(3), 1
 )
 ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
 

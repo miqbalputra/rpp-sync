@@ -36,6 +36,7 @@ export async function createRpp(values: RppFormValues): Promise<RppActionResult>
           guruId,
           mapelId: d.mapelId,
           kelasId: d.kelasId,
+          noRpp: d.noRpp?.trim() || null,
           materi: d.materi.trim(),
           alokasiWaktu: d.alokasiWaktu.trim(),
           tujuanPembelajaran: d.tujuanPembelajaran,
@@ -91,6 +92,7 @@ export async function updateRpp(id: string, values: RppFormValues): Promise<RppA
         data: {
           mapelId: d.mapelId,
           kelasId: d.kelasId,
+          noRpp: d.noRpp?.trim() || null,
           materi: d.materi.trim(),
           alokasiWaktu: d.alokasiWaktu.trim(),
           tujuanPembelajaran: d.tujuanPembelajaran,
@@ -169,6 +171,7 @@ export async function getShareUrl(rppId: string, tipeParam: "image" | "pdf" | "w
 
     const namaKepalaSekolah = await getNamaKepalaSekolah();
     const data = {
+      noRpp: rpp.noRpp,
       materi: rpp.materi, alokasiWaktu: rpp.alokasiWaktu, tujuanPembelajaran: rpp.tujuanPembelajaran,
       tanggalPengesahan: rpp.tanggalPengesahan, mapelNama: rpp.mapel.namaMapel, kelasNama: rpp.kelas.namaKelas,
       kelasGender: rpp.kelas.gender, semester: rpp.kelas.semester, tahunAjaran: rpp.kelas.tahunAjaran,

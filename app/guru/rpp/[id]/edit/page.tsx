@@ -26,6 +26,7 @@ export default async function EditRppPage({
   const defaultValues = {
     mapelId: rpp.mapelId,
     kelasId: rpp.kelasId,
+    noRpp: rpp.noRpp ?? "",
     materi: rpp.materi,
     alokasiWaktu: rpp.alokasiWaktu,
     tujuanPembelajaran: rpp.tujuanPembelajaran,

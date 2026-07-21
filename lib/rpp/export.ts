@@ -27,6 +27,7 @@ export const EXT: Record<ExportTipe, string> = {
 /** Hash konten RPP untuk invalidasi cache (PRD: regenerate kalau RPP diedit). */
 export function contentHash(data: RppViewData): string {
   const parts = [
+    data.noRpp ?? "",
     data.mapelNama,
     data.kelasNama,
     data.materi,

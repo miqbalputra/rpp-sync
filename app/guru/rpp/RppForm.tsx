@@ -45,6 +45,7 @@ export default function RppForm({
     defaultValues: defaultValues ?? {
       mapelId: "",
       kelasId: "",
+      noRpp: "",
       materi: "",
       alokasiWaktu: "",
       tujuanPembelajaran: "",
@@ -96,6 +97,16 @@ export default function RppForm({
       <section className={sectionCls}>
         <h2 className="text-sm font-semibold text-foreground mb-4">Header</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label className={labelCls}>No. RPP</label>
+            <input
+              className={inputCls}
+              {...register("noRpp")}
+              placeholder="cth: 001/RPP/2026 (opsional, untuk membedakan & memudahkan pencarian)"
+              maxLength={50}
+            />
+            {errors.noRpp && <p className={errCls}>{errors.noRpp.message}</p>}
+          </div>
           <div>
             <label className={labelCls}>Mata Pelajaran</label>
             <select

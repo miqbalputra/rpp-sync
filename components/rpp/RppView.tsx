@@ -1,5 +1,8 @@
-// Tampilan RPP (read-only). Dipakai di halaman detail & export (Tahap 7).
+// Tampilan RPP (read-only) — layout tabel berborder meniru format rpp.pdf.
+// Dipakai di halaman detail, referensi, & export gambar/PDF (export pakai
+// template HTML terpisah, komponen ini untuk tampilan web).
 export type RppViewData = {
+  noRpp?: string | null;
   materi: string;
   alokasiWaktu: string;
   tujuanPembelajaran: string;
@@ -21,95 +24,141 @@ function fmtTanggal(d: Date | string): string {
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(date);
 }
 
+// Helper kelas tabel agar konsisten.
+const cellCls = "border border-slate-400 px-2.5 py-1.5 text-sm text-slate-800 align-top";
+const labelCls = "border border-slate-400 px-2.5 py-1.5 text-sm font-semibold text-slate-700 bg-slate-50 align-top w-36";
+const sectionHeaderCls = "border border-slate-400 px-2.5 py-1.5 text-sm font-bold text-emerald-800 bg-emerald-50 text-center";
+
 // Wrapper styling untuk halaman web (export pakai RppTemplateExport terpisah).
 export function RppView({ data }: { data: RppViewData }) {
+  const kelasSemester = `${data.kelasNama}${data.semester ? ` / ${data.semester}` : ""}`;
+
+  // Pertemuan disusun 2 per baris (meniru layout rpp.pdf: Pertemuan 1|2, 3|4, ...).
+  const pertemuanRows: { urutan: number; isiKegiatan: string }[][] = [];
+  for (let i = 0; i < data.pertemuan.length; i += 2) {
+    pertemuanRows.push(data.pertemuan.slice(i, i + 2));
+  }
+
   return (
-    <article className="space-y-5 text-slate-800">
-      <header className="border-b-2 border-emerald-700 pb-3">
-        <div className="text-center font-bold text-lg uppercase tracking-wide">Rencana Pelaksanaan Pembelajaran</div>
+    <article className="text-slate-800">
+      {/* Judul */}
+      <header className="border-2 border-emerald-700 px-3 py-2 mb-3">
+        <div className="text-center font-bold text-base uppercase tracking-wide">
+          Rencana Pelaksanaan Pembelajaran
+        </div>
+        {data.noRpp && (
+          <div className="text-center text-xs text-slate-600 mt-0.5">
+            No. RPP: <span className="font-semibold">{data.noRpp}</span>
+          </div>
+        )}
       </header>
 
-      <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-        <Field label="Mata Pelajaran" value={data.mapelNama} />
-        <Field label="Kelas / Semester" value={`${data.kelasNama}${data.semester ? ` / ${data.semester}` : ""}`} />
-        <Field label="Materi" value={data.materi} />
-        <Field label="Alokasi Waktu" value={data.alokasiWaktu} />
-        {data.tahunAjaran && <Field label="Tahun Ajaran" value={data.tahunAjaran} />}
-      </div>
+      {/* Meta: 4 kolom (label | value | label | value) */}
+      <table className="w-full border-collapse mb-3">
+        <tbody>
+          <tr>
+            <th className={labelCls}>Mata Pelajaran</th>
+            <td className={cellCls}>{data.mapelNama}</td>
+            <th className={labelCls}>Materi</th>
+            <td className={cellCls}>{data.materi}</td>
+          </tr>
+          <tr>
+            <th className={labelCls}>Kelas / Semester</th>
+            <td className={cellCls}>{kelasSemester}</td>
+            <th className={labelCls}>Alokasi Waktu</th>
+            <td className={cellCls}>{data.alokasiWaktu}</td>
+          </tr>
+          {data.tahunAjaran && (
+            <tr>
+              <th className={labelCls}>Tahun Ajaran</th>
+              <td className={cellCls} colSpan={3}>{data.tahunAjaran}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
 
-      <Section title="Tujuan Pembelajaran">
-        <p className="whitespace-pre-wrap text-sm">{data.tujuanPembelajaran}</p>
-      </Section>
+      {/* Tujuan Pembelajaran */}
+      <table className="w-full border-collapse mb-3">
+        <tbody>
+          <tr>
+            <th className={sectionHeaderCls}>Tujuan Pembelajaran</th>
+          </tr>
+          <tr>
+            <td className={cellCls + " min-h-[60px]"}>
+              <p className="whitespace-pre-wrap">{data.tujuanPembelajaran}</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      <Section title="Kegiatan Pembelajaran">
-        <ol className="space-y-2">
-          {data.pertemuan.map((p) => (
-            <li key={p.urutan} className="text-sm">
-              <div className="font-semibold text-slate-700">Pertemuan {p.urutan}</div>
-              <p className="whitespace-pre-wrap">{p.isiKegiatan}</p>
-            </li>
+      {/* Kegiatan Pembelajaran — pertemuan 2 per baris */}
+      <table className="w-full border-collapse mb-3">
+        <tbody>
+          <tr>
+            <th className={sectionHeaderCls} colSpan={2}>Kegiatan Pembelajaran</th>
+          </tr>
+          {pertemuanRows.map((row, ri) => (
+            <tr key={ri}>
+              {row.map((p) => (
+                <td key={p.urutan} className={cellCls + " w-1/2"}>
+                  <div className="font-semibold text-slate-700 mb-1">Pertemuan {p.urutan}</div>
+                  <p className="whitespace-pre-wrap">{p.isiKegiatan}</p>
+                </td>
+              ))}
+              {row.length === 1 && <td className={cellCls + " bg-slate-50"}>&nbsp;</td>}
+            </tr>
           ))}
-        </ol>
-      </Section>
+        </tbody>
+      </table>
 
-      <Section title="Penilaian">
-        {data.penilaian ? (
-          <div className="space-y-2 text-sm">
-            <SubField label="Pengetahuan" value={data.penilaian.pengetahuan} />
-            <SubField label="Keterampilan" value={data.penilaian.keterampilan} />
-            <SubField label="Sikap" value={data.penilaian.sikap} />
-          </div>
-        ) : (
-          <p className="text-slate-400 text-sm">—</p>
-        )}
-      </Section>
+      {/* Penilaian — 3 kolom */}
+      <table className="w-full border-collapse mb-3">
+        <tbody>
+          <tr>
+            <th className={sectionHeaderCls}>Pengetahuan</th>
+            <th className={sectionHeaderCls}>Keterampilan</th>
+            <th className={sectionHeaderCls}>Sikap</th>
+          </tr>
+          <tr>
+            <td className={cellCls}>
+              <p className="whitespace-pre-wrap">{data.penilaian?.pengetahuan ?? "—"}</p>
+            </td>
+            <td className={cellCls}>
+              <p className="whitespace-pre-wrap">{data.penilaian?.keterampilan ?? "—"}</p>
+            </td>
+            <td className={cellCls}>
+              <p className="whitespace-pre-wrap">{data.penilaian?.sikap ?? "—"}</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      <Section title="Pengesahan">
-        <div className="grid grid-cols-3 gap-4 text-sm text-center">
-          <div>
-            <div className="text-slate-500">Mengetahui,</div>
-            <div className="text-slate-500">Kepala Sekolah</div>
-            <div className="h-12" />
-            <div className="font-semibold border-t border-slate-300 pt-1">{data.namaKepalaSekolah ?? "—"}</div>
-          </div>
-          <div>
-            <div className="text-slate-400 text-xs">Tempat &amp; Tanggal</div>
-            <div className="h-12 flex items-center justify-center">{data.tempat ?? "Purbalingga"},<br />{fmtTanggal(data.tanggalPengesahan)}</div>
-          </div>
-          <div>
-            <div className="text-slate-500">Guru Pengampu</div>
-            <div className="h-12" />
-            <div className="font-semibold border-t border-slate-300 pt-1">{data.namaUstadz}</div>
-          </div>
-        </div>
-      </Section>
+      {/* Pengesahan — 3 kolom */}
+      <table className="w-full border-collapse">
+        <tbody>
+          <tr>
+            <td className={cellCls + " text-center w-1/3"}>
+              <div className="text-slate-600">Mengetahui,</div>
+              <div className="text-slate-600">Kepala Sekolah</div>
+              <div className="h-12" />
+              <div className="font-semibold border-t border-slate-400 pt-1">
+                {data.namaKepalaSekolah ?? "—"}
+              </div>
+            </td>
+            <td className={cellCls + " text-center w-1/3"}>
+              <div className="text-slate-400 text-xs">Tempat &amp; Tanggal</div>
+              <div className="h-12 flex items-center justify-center">
+                {data.tempat ?? "Purbalingga"},<br />{fmtTanggal(data.tanggalPengesahan)}
+              </div>
+            </td>
+            <td className={cellCls + " text-center w-1/3"}>
+              <div className="text-slate-600">Ustadz/ah Pengampu</div>
+              <div className="h-12" />
+              <div className="font-semibold border-t border-slate-400 pt-1">{data.namaUstadz}</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </article>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex gap-2">
-      <span className="font-semibold text-slate-600 w-40 shrink-0">{label}</span>
-      <span className="text-slate-800">: {value}</span>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h3 className="font-semibold text-emerald-800 mb-2 border-l-4 border-emerald-600 pl-2">{title}</h3>
-      <div className="pl-2">{children}</div>
-    </section>
-  );
-}
-
-function SubField({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="font-semibold text-slate-600">{label}</div>
-      <p className="whitespace-pre-wrap">{value}</p>
-    </div>
   );
 }

@@ -30,6 +30,7 @@ export default async function RecycleBinPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>No. RPP</TableHead>
                 <TableHead>Materi</TableHead>
                 <TableHead>Guru Pemilik</TableHead>
                 <TableHead>Mapel / Kelas</TableHead>
@@ -40,6 +41,7 @@ export default async function RecycleBinPage() {
             <TableBody>
               {rpp.map((r) => (
                 <TableRow key={r.id}>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{r.noRpp ?? "—"}</TableCell>
                   <TableCell className="font-medium text-foreground">{r.materi}</TableCell>
                   <TableCell className="text-muted-foreground">{r.guru?.namaTampil ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">

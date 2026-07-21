@@ -44,6 +44,7 @@ export async function buildRppDocxBuffer(data: RppViewData): Promise<Buffer> {
   const meta = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
+      ...(data.noRpp ? [metaRow("No. RPP", data.noRpp)] : []),
       metaRow("Mata Pelajaran", data.mapelNama),
       metaRow("Kelas / Semester", `${data.kelasNama}${data.semester ? " / " + data.semester : ""}`),
       metaRow("Materi", data.materi),

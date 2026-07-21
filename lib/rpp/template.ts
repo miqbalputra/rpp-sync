@@ -61,6 +61,7 @@ export function buildRppHtml(data: RppViewData): string {
     letter-spacing: 1px;
   }
   .kop .sub { font-size: 13px; color: #475569; margin-top: 2px; }
+  .kop .norpp { font-size: 12px; color: #334155; margin-top: 4px; }
 
   .meta {
     display: grid;
@@ -115,6 +116,7 @@ export function buildRppHtml(data: RppViewData): string {
   <div class="kop">
     <div class="judul">Rencana Pelaksanaan Pembelajaran</div>
     <div class="sub">Griya Qur'an "Tunas Ilmu" — Purbalingga</div>
+    ${data.noRpp ? `<div class="norpp">No. RPP: <strong>${esc(data.noRpp)}</strong></div>` : ""}
   </div>
 
   <div class="meta">

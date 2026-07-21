@@ -64,7 +64,10 @@ export default async function GuruHomePage() {
               <li key={r.id}>
                 <Link href={`/guru/rpp/${r.id}`} className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors">
                   <div className="min-w-0">
-                    <div className="font-medium text-foreground truncate">{r.materi}</div>
+                    <div className="font-medium text-foreground truncate">
+                      {r.noRpp && <span className="font-mono text-xs text-muted-foreground mr-2">No. {r.noRpp}</span>}
+                      {r.materi}
+                    </div>
                     <div className="text-xs text-muted-foreground mt-0.5">{r.mapel.namaMapel} · {r.kelas.namaKelas}</div>
                   </div>
                   <Badge variant={STATUS_VARIANT[r.status] ?? "secondary"} className="ml-3 shrink-0">

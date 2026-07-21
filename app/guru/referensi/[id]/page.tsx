@@ -47,6 +47,7 @@ export default async function ReferensiDetailPage({
 
   const namaKepalaSekolah = await getNamaKepalaSekolah();
   const data: RppViewData = {
+    noRpp: rpp.noRpp,
     materi: rpp.materi,
     alokasiWaktu: rpp.alokasiWaktu,
     tujuanPembelajaran: rpp.tujuanPembelajaran,

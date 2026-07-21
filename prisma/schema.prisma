@@ -169,6 +169,7 @@ model Rpp {
   guruId            String
   mapelId           String
   kelasId           String
+  noRpp             String?     // Nomor RPP bebas (untuk membedakan & memudahkan pencarian)
   materi            String
   alokasiWaktu      String
   tujuanPembelajaran String
@@ -190,6 +191,7 @@ model Rpp {
   exports           RppExport[]
 
   @@index([guruId])
+  @@index([guruId, noRpp])
   @@index([mapelId, kelasId])
   @@map("rpp")
 }

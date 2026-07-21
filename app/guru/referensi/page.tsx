@@ -65,6 +65,7 @@ export default async function ReferensiPage({
               <div className="flex flex-wrap items-center gap-2 mb-1.5">
                 <span className="text-xs text-muted-foreground">{r.mapel.namaMapel} · {r.kelas.namaKelas}</span>
                 <span className="text-xs text-muted-foreground">oleh {r.guru?.namaTampil ?? "—"}</span>
+                {r.noRpp && <span className="text-xs font-mono text-foreground">No. {r.noRpp}</span>}
               </div>
               <div className="font-semibold text-foreground">{r.materi}</div>
               <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.tujuanPembelajaran}</div>
