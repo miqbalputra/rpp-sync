@@ -1,0 +1,301 @@
+// Skema PRODUKSI (MariaDB/MySQL) untuk deploy via Coolify.
+// File ini HARUS identik dengan prisma/schema.prisma (versi DEV SQLite) kecuali
+// baris provider di bawah. Saat menambah/mengubah model, ubah KEDUA file sekaligus
+// lalu regenerasi migrasi:
+//   dev : npx prisma migrate dev --name <nama>            (migrations/)
+//   prod: npx prisma migrate diff --from-empty --to-schema-datamodel prisma/prod/schema.prisma --script
+//         > prisma/prod/migrations/<YYYYMMDDHHMMSS>_init/migration.sql
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ----- Enums (disimpan sebagai String di SQLite; jadi enum native di MySQL) -----
+
+enum Role {
+  ADMIN
+  KEPALA_SEKOLAH
+  PJ_DINIYYAH
+  GURU
+}
+
+enum Gender {
+  IKHWAN
+  AKHWAT
+}
+
+enum RppStatus {
+  DRAFT
+  DIAJUKAN
+  DIREVIEW_PJ
+  DISETUJUI_KEPALA
+}
+
+enum ExportType {
+  IMAGE
+  PDF
+  DOCX
+}
+
+// Hari dalam seminggu (urutan kerja sekolah: Senin..Ahad)
+enum Hari {
+  SENIN
+  SELASA
+  RABU
+  KAMIS
+  JUMAT
+  SABTU
+  AHAD
+}
+
+enum NotifikasiTipe {
+  BROADCAST
+  HELP
+}
+
+// Audiens pesan broadcast. SEMUA = semua role.
+enum NotifikasiAudience {
+  SEMUA
+  ADMIN
+  KEPALA_SEKOLAH
+  PJ_DINIYYAH
+  GURU
+}
+
+// ----- Entitas Utama (PRD §6) -----
+
+model User {
+  id           String   @id @default(cuid())
+  nama         String
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  role         Role     @default(GURU)
+  gender       Gender?
+  aktif        Boolean  @default(true)
+  // Preferensi: terima pengingat RPP yang melewati jam mengajar (overdue)
+  prefNotifOverdue Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relasi 1-1: User bisa punya profil Guru
+  guru         Guru?
+
+  // RPP yang dibuat oleh user ini
+  rppDibuat     Rpp[]         @relation("RppDibuatOleh")
+  rppLogStatus  RppLogStatus[]
+
+  // Notifikasi: dikirim oleh user ini, ditujukan khusus ke user ini (reply 1:1), tanda baca
+  notifikasiDikirim Notifikasi[]      @relation("NotifikasiDari")
+  notifikasiUntuk   Notifikasi[]      @relation("NotifikasiUntuk")
+  notifikasiDibaca  NotifikasiDibaca[]
+
+  @@map("users")
+}
+
+model Guru {
+  id         String @id @default(cuid())
+  userId     String @unique
+  namaTampil String
+
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mapel      GuruMapel[]
+  penugasan  Penugasan[]
+  rpp        Rpp[]
+
+  @@map("gurus")
+}
+
+model Mapel {
+  id        String @id @default(cuid())
+  namaMapel String @unique
+
+  guruMapel GuruMapel[]
+  penugasan Penugasan[]
+  rpp       Rpp[]
+
+  @@map("mapels")
+}
+
+model Kelas {
+  id         String  @id @default(cuid())
+  namaKelas  String
+  semester   String
+  gender     Gender
+  tahunAjaran String
+
+  penugasan Penugasan[]
+  rpp       Rpp[]
+
+  @@map("kelas")
+}
+
+// Junction many-to-many Guru <-> Mapel
+model GuruMapel {
+  guruId  String
+  mapelId String
+
+  guru    Guru   @relation(fields: [guruId], references: [id], onDelete: Cascade)
+  mapel   Mapel  @relation(fields: [mapelId], references: [id], onDelete: Cascade)
+
+  @@id([guruId, mapelId])
+  @@map("guru_mapel")
+}
+
+// Penugasan: guru X -> mapel Y -> kelas Z (acuan filter form RPP §5.4)
+model Penugasan {
+  id      String @id @default(cuid())
+  guruId  String
+  mapelId String
+  kelasId String
+
+  guru    Guru  @relation(fields: [guruId], references: [id], onDelete: Cascade)
+  mapel   Mapel @relation(fields: [mapelId], references: [id], onDelete: Restrict)
+  kelas   Kelas @relation(fields: [kelasId], references: [id], onDelete: Restrict)
+
+  jadwal  Jadwal[]
+
+  @@unique([guruId, mapelId, kelasId])
+  @@map("penugasan")
+}
+
+model Rpp {
+  id                String      @id @default(cuid())
+  guruId            String
+  mapelId           String
+  kelasId           String
+  materi            String
+  alokasiWaktu      String
+  tujuanPembelajaran String
+  status            RppStatus   @default(DRAFT)
+  tanggalPengesahan DateTime
+  dibuatOleh        String
+  deletedAt         DateTime?
+
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  guru              Guru        @relation(fields: [guruId], references: [id], onDelete: Cascade)
+  mapel             Mapel       @relation(fields: [mapelId], references: [id], onDelete: Restrict)
+  kelas             Kelas       @relation(fields: [kelasId], references: [id], onDelete: Restrict)
+  dibuatOlehUser    User        @relation("RppDibuatOleh", fields: [dibuatOleh], references: [id])
+  pertemuan         RppPertemuan[]
+  penilaian         RppPenilaian?
+  logStatus         RppLogStatus[]
+  exports           RppExport[]
+
+  @@index([guruId])
+  @@index([mapelId, kelasId])
+  @@map("rpp")
+}
+
+model RppPertemuan {
+  id          String  @id @default(cuid())
+  rppId       String
+  urutan      Int
+  isiKegiatan String
+
+  rpp         Rpp     @relation(fields: [rppId], references: [id], onDelete: Cascade)
+
+  @@index([rppId])
+  @@map("rpp_pertemuan")
+}
+
+model RppPenilaian {
+  id           String @id @default(cuid())
+  rppId        String @unique
+  pengetahuan  String
+  keterampilan String
+  sikap       String
+
+  rpp          Rpp    @relation(fields: [rppId], references: [id], onDelete: Cascade)
+
+  @@map("rpp_penilaian")
+}
+
+model RppLogStatus {
+  id         String    @id @default(cuid())
+  rppId      String
+  statusLama RppStatus?
+  statusBaru RppStatus
+  olehUserId String
+  catatan    String?
+  createdAt  DateTime  @default(now())
+
+  rpp        Rpp       @relation(fields: [rppId], references: [id], onDelete: Cascade)
+  olehUser   User      @relation(fields: [olehUserId], references: [id])
+
+  @@index([rppId])
+  @@map("rpp_log_status")
+}
+
+model RppExport {
+  id        String     @id @default(cuid())
+  rppId     String
+  tipeFile  ExportType
+  pathFile  String
+  hash      String?
+  createdAt DateTime   @default(now())
+
+  rpp       Rpp        @relation(fields: [rppId], references: [id], onDelete: Cascade)
+
+  @@unique([rppId, tipeFile])
+  @@map("rpp_export")
+}
+
+// Jadwal mengajar: satu Penugasan bisa punya beberapa slot mingguan.
+model Jadwal {
+  id          String   @id @default(cuid())
+  penugasanId String
+  hari        Hari
+  jamMulai    String   // "HH:mm"
+  jamSelesai  String   // "HH:mm"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  penugasan   Penugasan @relation(fields: [penugasanId], references: [id], onDelete: Cascade)
+
+  @@unique([penugasanId, hari, jamMulai])
+  @@index([penugasanId])
+  @@map("jadwal")
+}
+
+// Pesan/notifikasi: broadcast (Admin/Kepala/PJ -> audiens) atau help (guru -> Admin/PJ).
+// untukRole untuk broadcast/role-target; untukUserId untuk balasan 1:1.
+model Notifikasi {
+  id          String             @id @default(cuid())
+  tipe        NotifikasiTipe
+  dariUserId  String?            // null = sistem
+  untukRole   NotifikasiAudience? // null jika untukUserId dipakai (1:1 reply)
+  untukUserId String?            // target 1:1 (reply)
+  judul       String
+  isi         String
+  createdAt   DateTime           @default(now())
+
+  dariUser    User?              @relation("NotifikasiDari", fields: [dariUserId], references: [id], onDelete: SetNull)
+  untukUser   User?              @relation("NotifikasiUntuk", fields: [untukUserId], references: [id], onDelete: Cascade)
+  dibaca      NotifikasiDibaca[]
+
+  @@index([untukRole])
+  @@index([untukUserId])
+  @@index([createdAt])
+  @@map("notifikasi")
+}
+
+// Tanda terima baca per user (broadcast punya status baca per-pengguna).
+model NotifikasiDibaca {
+  userId        String
+  notifikasiId  String
+  readAt        DateTime @default(now())
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifikasi    Notifikasi  @relation(fields: [notifikasiId], references: [id], onDelete: Cascade)
+
+  @@id([userId, notifikasiId])
+  @@index([notifikasiId])
+  @@map("notifikasi_dibaca")
+}

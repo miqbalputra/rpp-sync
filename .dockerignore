@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.*
+!.env.production.example
+prisma/dev.db
+prisma/dev.db-journal
+.devlog.txt
+*.log
+npm-debug.log*
+README.md
+PRD.md
+progress.md
+.devlog.txt

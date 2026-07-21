@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Dev log artifact
 .devlog.txt
+
+# Contoh env produksi (aman, tanpa secret asli) — boleh di-commit
+!.env.production.example
