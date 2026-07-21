@@ -24,9 +24,15 @@ export const EXT: Record<ExportTipe, string> = {
   DOCX: "docx",
 };
 
+// Versi template render. Naikkan kalau layout export berubah signifikan
+// (mis. ganti template.ts/docx.ts/view-html.ts) supaya cache lama ter-invalidate
+// dan file di-regenerate dengan layout baru.
+const RENDER_VERSION = "v2-2026-07";
+
 /** Hash konten RPP untuk invalidasi cache (PRD: regenerate kalau RPP diedit). */
 export function contentHash(data: RppViewData): string {
   const parts = [
+    RENDER_VERSION,
     data.noRpp ?? "",
     data.mapelNama,
     data.kelasNama,

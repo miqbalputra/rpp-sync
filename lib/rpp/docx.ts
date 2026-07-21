@@ -1,5 +1,11 @@
-// Generate file Word (.docx) dari data RPP — PRD Tahap 8, pakai library `docx`.
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType } from "docx";
+// Generate file Word (.docx) dari data RPP. Struktur meniru layout tabel di
+// layar (components/rpp/RppView.tsx & lib/rpp/view-html.ts) agar hasil export
+// Word SAMA PERSIS dengan tampilan layar: judul + No. RPP, tabel meta 4-kolom,
+// tujuan, kegiatan (pertemuan 2 per baris), penilaian 3-kolom, pengesahan 3-kolom.
+import {
+  Document, Packer, Paragraph, TextRun, AlignmentType,
+  Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, VerticalAlign,
+} from "docx";
 import { RppViewData } from "@/components/rpp/RppView";
 
 function fmtTanggal(d: Date | string): string {
@@ -11,95 +17,159 @@ function fmtTanggal(d: Date | string): string {
   }
 }
 
-function heading(text: string) {
-  return new Paragraph({
-    heading: HeadingLevel.HEADING_2,
-    children: [new TextRun({ text, bold: true, color: "047857" })],
-    spacing: { before: 160, after: 60 },
+// Padanan warna slate/emerald dari RppView.
+const BORDER = { style: BorderStyle.SINGLE, size: 4, color: "94A3B8" }; // slate-400, 0.5pt
+const CELL_BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
+
+function txt(text: string, opts: { bold?: boolean; color?: string; size?: number } = {}): TextRun {
+  return new TextRun({ text, bold: opts.bold, color: opts.color, size: opts.size ?? 22 }); // 11pt
+}
+
+// Sel biasa (value).
+function vCell(text: string, opts: { widthPct?: number; columnSpan?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}): TableCell {
+  const lines = String(text ?? "").split("\n");
+  return new TableCell({
+    width: opts.widthPct ? { size: opts.widthPct, type: WidthType.PERCENTAGE } : undefined,
+    columnSpan: opts.columnSpan,
+    verticalAlign: VerticalAlign.TOP,
+    borders: CELL_BORDERS,
+    children: lines.map((l) => new Paragraph({ alignment: opts.align, spacing: { after: 0 }, children: [txt(l)] })),
   });
 }
 
-function metaRow(label: string, value: string): TableRow {
-  return new TableRow({
-    children: [
-      new TableCell({
-        width: { size: 28, type: WidthType.PERCENTAGE },
-        children: [new Paragraph({ children: [new TextRun({ text: label, bold: true })] })],
-      }),
-      new TableCell({
-        children: [new Paragraph({ children: [new TextRun({ text: ": " + value })] })],
-      }),
-    ],
+// Sel label (tebal, latar slate-50, rata kiri).
+function lCell(text: string, widthPct: number): TableCell {
+  return new TableCell({
+    width: { size: widthPct, type: WidthType.PERCENTAGE },
+    verticalAlign: VerticalAlign.TOP,
+    borders: CELL_BORDERS,
+    shading: { type: ShadingType.CLEAR, color: "auto", fill: "F8FAFC" }, // slate-50
+    children: [new Paragraph({ spacing: { after: 0 }, children: [txt(text, { bold: true, color: "334155" })] })], // slate-700
   });
 }
 
-function paragraph(text: string): Paragraph {
-  return new Paragraph({
-    spacing: { after: 60 },
-    children: [new TextRun({ text })],
+// Sel header section (tebal, latar emerald-50, rata tengah).
+function hCell(text: string, columnSpan?: number): TableCell {
+  return new TableCell({
+    columnSpan,
+    verticalAlign: VerticalAlign.TOP,
+    borders: CELL_BORDERS,
+    shading: { type: ShadingType.CLEAR, color: "auto", fill: "ECFDF5" }, // emerald-50
+    children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [txt(text, { bold: true, color: "065F46" })] })], // emerald-800
   });
 }
+
+const FULL = { size: 100, type: WidthType.PERCENTAGE };
 
 export async function buildRppDocxBuffer(data: RppViewData): Promise<Buffer> {
+  const kelasSemester = `${data.kelasNama}${data.semester ? " / " + data.semester : ""}`;
+
+  // ----- Judul + No. RPP -----
+  const judul: Paragraph[] = [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 40 },
+      children: [new TextRun({ text: "RENCANA PELAKSANAAN PEMBELAJARAN", bold: true, size: 28 })], // 14pt
+    }),
+  ];
+  if (data.noRpp) {
+    judul.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 120 },
+        children: [new TextRun({ text: `No. RPP: `, size: 20 }), new TextRun({ text: data.noRpp, bold: true, size: 20 })], // 10pt
+      })
+    );
+  } else {
+    judul.push(new Paragraph({ spacing: { after: 120 }, children: [] }));
+  }
+
+  // ----- Tabel meta (4 kolom) -----
   const meta = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
+    width: FULL,
     rows: [
-      ...(data.noRpp ? [metaRow("No. RPP", data.noRpp)] : []),
-      metaRow("Mata Pelajaran", data.mapelNama),
-      metaRow("Kelas / Semester", `${data.kelasNama}${data.semester ? " / " + data.semester : ""}`),
-      metaRow("Materi", data.materi),
-      metaRow("Alokasi Waktu", data.alokasiWaktu),
-      ...(data.tahunAjaran ? [metaRow("Tahun Ajaran", data.tahunAjaran)] : []),
+      new TableRow({ children: [lCell("Mata Pelajaran", 25), vCell(data.mapelNama, { widthPct: 25 }), lCell("Materi", 25), vCell(data.materi, { widthPct: 25 })] }),
+      new TableRow({ children: [lCell("Kelas / Semester", 25), vCell(kelasSemester, { widthPct: 25 }), lCell("Alokasi Waktu", 25), vCell(data.alokasiWaktu, { widthPct: 25 })] }),
+      ...(data.tahunAjaran ? [new TableRow({ children: [lCell("Tahun Ajaran", 25), vCell(data.tahunAjaran, { columnSpan: 3 })] })] : []),
     ],
   });
 
-  const pertemuanParas: Paragraph[] = [];
-  data.pertemuan.forEach((p, i) => {
-    pertemuanParas.push(new Paragraph({
-      spacing: { before: 80, after: 20 },
-      children: [new TextRun({ text: `Pertemuan ${i + 1}`, bold: true })],
-    }));
-    p.isiKegiatan.split("\n").forEach((line) => {
-      pertemuanParas.push(new Paragraph({ children: [new TextRun({ text: line })], indent: { left: 360 } }));
-    });
+  // ----- Tujuan Pembelajaran -----
+  const tujuan = new Table({
+    width: FULL,
+    rows: [
+      new TableRow({ children: [hCell("Tujuan Pembelajaran")] }),
+      new TableRow({ children: [vCell(data.tujuanPembelajaran)] }),
+    ],
   });
 
-  const penilaianParas: Paragraph[] = [];
-  if (data.penilaian) {
-    for (const [lbl, val] of [
-      ["Pengetahuan", data.penilaian.pengetahuan],
-      ["Keterampilan", data.penilaian.keterampilan],
-      ["Sikap", data.penilaian.sikap],
-    ] as [string, string][]) {
-      penilaianParas.push(new Paragraph({
-        spacing: { before: 60, after: 20 },
-        children: [new TextRun({ text: lbl, bold: true })],
-      }));
-      penilaianParas.push(new Paragraph({ children: [new TextRun({ text: val })], indent: { left: 360 } }));
-    }
-  }
+  // ----- Kegiatan Pembelajaran (pertemuan 2 per baris) -----
+  const pRows: { urutan: number; isiKegiatan: string }[][] = [];
+  for (let i = 0; i < data.pertemuan.length; i += 2) pRows.push(data.pertemuan.slice(i, i + 2));
+  const kegiatanRows: TableRow[] = [
+    new TableRow({ children: [hCell("Kegiatan Pembelajaran", 2)] }),
+    ...pRows.map((row) => {
+      const cells = row.map((p) =>
+        new TableCell({
+          width: { size: 50, type: WidthType.PERCENTAGE },
+          verticalAlign: VerticalAlign.TOP,
+          borders: CELL_BORDERS,
+          children: [
+            new Paragraph({ spacing: { after: 40 }, children: [txt(`Pertemuan ${p.urutan}`, { bold: true, color: "334155" })] }),
+            ...String(p.isiKegiatan).split("\n").map((l) => new Paragraph({ spacing: { after: 0 }, children: [txt(l)] })),
+          ],
+        })
+      );
+      if (row.length === 1) {
+        cells.push(new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: CELL_BORDERS, children: [new Paragraph({ children: [] })] }));
+      }
+      return new TableRow({ children: cells });
+    }),
+  ];
+  const kegiatan = new Table({ width: FULL, rows: kegiatanRows });
 
+  // ----- Penilaian (3 kolom) -----
+  const pen = data.penilaian;
+  const penilaian = new Table({
+    width: FULL,
+    rows: [
+      new TableRow({ children: [hCell("Pengetahuan"), hCell("Keterampilan"), hCell("Sikap")] }),
+      new TableRow({ children: [vCell(pen?.pengetahuan ?? "—"), vCell(pen?.keterampilan ?? "—"), vCell(pen?.sikap ?? "—")] }),
+    ],
+  });
+
+  // ----- Pengesahan (3 kolom) -----
+  const spacer = (n = 3) => Array.from({ length: n }, () => new Paragraph({ spacing: { after: 0 }, children: [txt("")] }));
   const pengesahan = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
+    width: FULL,
     rows: [
       new TableRow({
         children: [
-          new TableCell({ children: [
-            new Paragraph({ children: [new TextRun({ text: "Mengetahui,", italics: true })] }),
-            new Paragraph({ children: [new TextRun({ text: "Kepala Sekolah", italics: true })] }),
-            new Paragraph({ text: "" }), new Paragraph({ text: "" }), new Paragraph({ text: "" }),
-            new Paragraph({ children: [new TextRun({ text: data.namaKepalaSekolah ?? ".................", bold: true, underline: {} })] }),
-          ]}),
-          new TableCell({ children: [
-            new Paragraph({ children: [new TextRun({ text: "Tempat & Tanggal", italics: true })] }),
-            new Paragraph({ text: "" }), new Paragraph({ text: "" }), new Paragraph({ text: "" }),
-            new Paragraph({ children: [new TextRun({ text: `${data.tempat ?? "Purbalingga"}, ${fmtTanggal(data.tanggalPengesahan)}`, bold: true })] }),
-          ]}),
-          new TableCell({ children: [
-            new Paragraph({ children: [new TextRun({ text: "Guru Pengampu", italics: true })] }),
-            new Paragraph({ text: "" }), new Paragraph({ text: "" }), new Paragraph({ text: "" }),
-            new Paragraph({ children: [new TextRun({ text: data.namaUstadz, bold: true, underline: {} })] }),
-          ]}),
+          new TableCell({
+            width: { size: 33, type: WidthType.PERCENTAGE }, borders: CELL_BORDERS,
+            children: [
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [txt("Mengetahui,", { color: "475569" })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [txt("Kepala Sekolah", { color: "475569" })] }),
+              ...spacer(),
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [txt(data.namaKepalaSekolah ?? "—", { bold: true })] }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 34, type: WidthType.PERCENTAGE }, borders: CELL_BORDERS,
+            children: [
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [txt("Tempat & Tanggal", { color: "94A3B8", size: 20 })] }),
+              ...spacer(),
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [txt(`${data.tempat ?? "Purbalingga"}, ${fmtTanggal(data.tanggalPengesahan)}`, { bold: true })] }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 33, type: WidthType.PERCENTAGE }, borders: CELL_BORDERS,
+            children: [
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [txt("Ustadz/ah Pengampu", { color: "475569" })] }),
+              ...spacer(),
+              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [txt(data.namaUstadz, { bold: true })] }),
+            ],
+          }),
         ],
       }),
     ],
@@ -109,24 +179,15 @@ export async function buildRppDocxBuffer(data: RppViewData): Promise<Buffer> {
     sections: [
       {
         children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            heading: HeadingLevel.HEADING_1,
-            children: [new TextRun({ text: "RENCANA PELAKSANAAN PEMBELAJARAN", bold: true })],
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: 'Griya Qur\'an "Tunas Ilmu" — Purbalingga', italics: true })],
-            spacing: { after: 120 },
-          }),
+          ...judul,
           meta,
-          heading("Tujuan Pembelajaran"),
-          ...data.tujuanPembelajaran.split("\n").map((line) => paragraph(line)),
-          heading("Kegiatan Pembelajaran"),
-          ...pertemuanParas,
-          heading("Penilaian"),
-          ...penilaianParas,
-          heading("Pengesahan"),
+          new Paragraph({ spacing: { after: 80 }, children: [] }),
+          tujuan,
+          new Paragraph({ spacing: { after: 80 }, children: [] }),
+          kegiatan,
+          new Paragraph({ spacing: { after: 80 }, children: [] }),
+          penilaian,
+          new Paragraph({ spacing: { after: 80 }, children: [] }),
           pengesahan,
         ],
       },
