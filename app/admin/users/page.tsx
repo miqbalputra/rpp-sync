@@ -8,7 +8,7 @@ import {
   Table, TableHead, TableHeader, TableBody, TableRow, TableCell,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus } from "lucide-react";
+import { Plus, Upload, FileSpreadsheet, Download } from "lucide-react";
 
 export const metadata = { title: "User — Admin" };
 
@@ -44,7 +44,29 @@ export default async function UsersPage({
       <PageHeader
         title="User"
         subtitle={`${users.length} akun`}
-        action={<PrimaryLink href="/admin/users/baru"><Plus className="h-4 w-4" />Tambah User</PrimaryLink>}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <PrimaryLink href="/admin/users/baru"><Plus className="h-4 w-4" />Tambah User</PrimaryLink>
+            <a
+              href="/admin/users/import"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+            >
+              <Upload className="h-4 w-4" />Import Guru
+            </a>
+            <a
+              href="/admin/users/export-guru"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+            >
+              <FileSpreadsheet className="h-4 w-4" />Export Guru
+            </a>
+            <a
+              href="/admin/users/template-guru"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+            >
+              <Download className="h-4 w-4" />Template
+            </a>
+          </div>
+        }
       />
       <ErrorBanner message={error ? decodeURIComponent(error) : null} />
       <Card>
