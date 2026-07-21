@@ -5,8 +5,7 @@ Terakhir diperbarui: 2026-07-21
 
 ## Status keseluruhan
 
-**MVP 100% selesai — Tahap 0 sampai 11.**
-Tahap 12 (deploy) sengaja **di luar cakupan** sesuai rencana awal yang disetujui.
+**MVP 100% selesai — Tahap 0 sampai 11. Tahap 12 (deploy) artefak siap; tinggal eksekusi di Coolify.**
 
 ## Ringkasan tahap
 
@@ -24,7 +23,7 @@ Tahap 12 (deploy) sengaja **di luar cakupan** sesuai rencana awal yang disetujui
 | 9 | Share via WhatsApp | ✅ |
 | 10 | Dashboard ringkas per role | ✅ |
 | 11 | Uji menyeluruh & polish | ✅ |
-| 12 | Deploy | ⏸️ di luar cakupan (perlu konfirmasi) |
+| 12 | Deploy | 🟦 artefak siap (repo + Dockerfile + SQL), eksekusi di Coolify |
 
 ## Verifikasi yang sudah dilakukan
 
@@ -229,3 +228,109 @@ ISO string, tanpa instance Prisma).
   daftar "Pesan terkirim" guru menampilkan kedua baris.
 - Test artifact (akun PJ/Kepala uji, broadcast, help, jadwal) dibersihkan; DB dev kembali
   ke kondisi awal (2 RPP aktif, tidak ada jadwal/notifikasi, hanya akun ADMIN+GURU).
+
+## Fitur: form Penugasan & Jadwal ber-cascade (2026-07-21)
+
+Form "tugas mengajar" kini saling terhubung (mapel → guru → kelas → jadwal), sumber
+filter = data Penugasan yang sudah ada (sesuai pola form RPP).
+
+- **Form Jadwal (`/jadwal/baru`)** — diganti dari dropdown penugasan datar menjadi
+  cascade: pilih **Guru** → **Mapel** tersaring (mapel yang diajar guru itu) →
+  **Kelas** tersaring (untuk guru+mapel itu) → `penugasanId` disimpulkan otomatis
+  (hidden field) → baru atur Hari & Jam. Komponen client baru
+  `app/jadwal/baru/JadwalForm.tsx`; query baru `getPenugasanTreeForJadwal`
+  (`lib/jadwal/queries.ts`) mengembalikan node `{id, guruId, guruNama, guruGender,
+  mapelId, mapelNama, kelasId, kelasNama, kelasGender}`. Tiap langkah disable sampai
+  langkah sebelumnya dipilih.
+- **Form Penugasan (`/admin/penugasan/baru`)** — cascade: pilih **Guru** → **Kelas**
+  tersaring sesuai gender guru (PRD §5.4) + checkbox "Tampilkan kelas lintas gender"
+  untuk pengecualian; **Mapel** aktif setelah guru dipilih. Deteksi duplikat
+  (guru+mapel+kelas sudah ada) → peringatan inline + tombol Simpan dinonaktifkan
+  (safety-net P2002 di server tetap ada). Komponen client baru
+  `app/admin/penugasan/baru/PenugasanForm.tsx`.
+- Server action tidak diubah — tetap baca `penugasanId` (Jadwal) /
+  `guruId,mapelId,kelasId` (Penugasan) dari FormData; validasi Zod + RBAC tetap berlaku.
+
+Verifikasi: `tsc --noEmit` bersih, `next build` sukses (36 route).
+
+## Tahap 12 — Artefak deploy Coolify + MariaDB (2026-07-21)
+
+Mempersiapkan deploy self-hosted via **Coolify** di VPS (PRD §7: VPS + Node + MariaDB),
+tanpa mengubah pengalaman dev SQLite. Repo di-push ke
+`https://github.com/miqbalputra/rpp-sync.git` (branch `main`, 3 commit).
+
+### Pendekatan dual-schema (dev SQLite tetap, prod MariaDB)
+- `prisma/schema.prisma` — **dev** (SQLite, `npm run dev` tidak berubah).
+- `prisma/prod/schema.prisma` — **produksi** (provider `mysql`), mirror schema dev.
+- `prisma/prod/migrations/20260721000000_init/migration.sql` — DDL MySQL digenerate
+  via `prisma migrate diff --from-empty --to-schema-datamodel` (tanpa koneksi DB).
+  `migration_lock.toml` provider=mysql.
+- `@prisma/client` di-generate untuk provider sesuai environment: dev `prisma generate`
+  (sqlite), Coolify build `prisma generate --schema=prisma/prod/schema.prisma` (mysql).
+  Kode app identik (API Prisma sama, skema portabel tanpa `@db.*`).
+- Catatan维护: saat ubah model, ubah **kedua** file skema + regenerasi migrasi dev
+  (`npm run db:migrate`) dan prod (lihat komentar di `prisma/prod/schema.prisma`).
+
+### Dockerfile (Coolify, build dari repo)
+- Base `node:20-bookworm-slim` + **chromium sistem** (apt) untuk export Puppeteer
+  (PDF/gambar) — `PUPPETEER_SKIP_DOWNLOAD=true`, `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium`.
+  `--no-sandbox` dsb. sudah dipasang di `lib/rpp/export.ts` `launchBrowser()`.
+- Build: `npm ci` → `prisma generate --schema=prisma/prod/schema.prisma` → `next build`.
+- CMD (tini): `NODE_ENV=production prisma migrate deploy --schema=prisma/prod/schema.prisma`
+  → `NODE_ENV=production npm run db:seed` → `next start -H 0.0.0.0 -p ${PORT:-3000}`.
+- `.dockerignore` mengecualikan `node_modules`, `.next`, `.git`, `.env*` (kecuali
+  `.env.production.example`), `dev.db`, `.devlog.txt`.
+
+### Seed prod-aware (`prisma/seed.ts`)
+- `NODE_ENV=production`: password admin dari env `ADMIN_PASSWORD` (Wajib diset);
+  data contoh (Mapel "Al-Qur'an" + Kelas "1 Ikhwan") hanya dibuat bila `SEED_DEMO=true`.
+- Dev: perilaku lama (`admin123` + data contoh). Upsert → idempoten (aman dijalankan
+  ulang tiap restart container).
+
+### `mariadb-init.sql` — inisialisasi DB siap copy-paste
+Alternatif init manual (selain auto-migrate saat container start). Satu file berisi:
+- Seluruh `CREATE TABLE` + FK (identik `prisma/prod/migrations/.../migration.sql`).
+- Tabel `_prisma_migrations` + 1 baris penanda migrasi `20260721000000_init` sudah
+  applied, lengkap dengan **checksum = sha256 isi migration.sql**
+  (`6c8c0d9207430b1ef28b3e9caa5011b421c982fe80e7f009a641871b9fbc4d0a`) — agar
+  `prisma migrate deploy` di Coolify melihat migrasi sudah tercatat → no-op, tidak
+  bentrok dengan init manual.
+- Seed idempoten (`ON DUPLICATE KEY UPDATE`): admin (bcrypt `admin123`, hash
+  diverifikasi via `bcryptjs.compareSync`), Mapel, Kelas contoh.
+- Header: cara pakai, cara ganti password sebelum tempel (one-liner bcryptjs), dan
+  fallback `prisma migrate resolve --applied 20260721000000_init` bila drift.
+
+### Lain
+- `.gitattributes`: `*.sql`/`*.prisma` paksa LF → checksum migrasi konsisten lintas
+  platform (Windows dev vs Linux container).
+- `.env.production.example`: `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`,
+  `ADMIN_PASSWORD`, `SEED_DEMO`.
+- `DEPLOY.md`: panduan langkah-demi-langkah Coolify (MariaDB service, app dari repo,
+  env vars, persistent volume untuk `EXPORT_DIR`, domain/HTTPS, pasca-deploy) +
+  seksi 6b opsi init DB manual via `mariadb-init.sql`.
+- `package.json`: script `db:generate:prod`, `db:migrate:prod`.
+- Git di-init (sebelumnya bukan repo); `.env` & `dev.db` ter-ignore, tidak ter-commit.
+
+### Verifikasi pasca-artefak deploy
+- `tsc --noEmit` → bersih; `next build` → sukses (36 route).
+- `prisma migrate diff` menghasilkan DDL MySQL valid; `sha256sum migration.sql` =
+  checksum yang dicantumkan di `mariadb-init.sql`.
+- bcrypt hash admin diverifikasi: `compareSync('admin123', hash)` → true.
+- **Belum dilakukan**: build Docker lokal (env Windows tanpa Docker) — resep standar,
+  verifikasi pada build pertama di Coolify; uji menyalurkan ke MariaDB sungguhan.
+
+### Yang masih perlu tindakan user di Coolify
+1. Buat database MariaDB service → dapat connection string.
+2. Buat Application dari repo `miqbalputra/rpp-sync` (Dockerfile terdeteksi).
+3. Set env: `DATABASE_URL` (dari service MariaDB), `NEXTAUTH_URL` (domain sekolah),
+   `NEXTAUTH_SECRET` (`openssl rand -base64 32`), `ADMIN_PASSWORD` (wajib).
+4. Tambah persistent volume ke `EXPORT_DIR` (lihat `lib/rpp/export.ts`) supaya file
+   export tidak hilang tiap redeploy.
+5. Deploy. (Opsi: jalankan `mariadb-init.sql` dulu untuk init manual.)
+6. Login `admin` + `ADMIN_PASSWORD` (atau `admin123` bila pakai SQL) → ganti password.
+
+### Known limitations (mengikuti catatan deviasi)
+- Template gambar/PDF/Word export masih **placeholder** menunggu template asli
+  (`lib/rpp/template.ts`, `lib/rpp/docx.ts`).
+- Role Kepala Sekolah & PJ Diniyyah: skema + RBAC siap, alur approval penuh
+  ditangguhkan ke v1.2.
