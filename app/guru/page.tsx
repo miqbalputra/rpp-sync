@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getGuruIdFromSession } from "@/lib/rpp/queries";
 import Link from "next/link";
 import { Plus, ArrowRight, FileText } from "lucide-react";
+import { AiBadge } from "@/components/rpp/AiBadge";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -68,7 +69,10 @@ export default async function GuruHomePage() {
                       {r.noRpp && <span className="font-mono text-xs text-muted-foreground mr-2">No. {r.noRpp}</span>}
                       {r.materi}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{r.mapel.namaMapel} · {r.kelas.namaKelas}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                      {r.mapel.namaMapel} · {r.kelas.namaKelas}
+                      {r.dibuatDenganAI && <AiBadge className="ml-1" />}
+                    </div>
                   </div>
                   <Badge variant={STATUS_VARIANT[r.status] ?? "secondary"} className="ml-3 shrink-0">
                     {STATUS_LABEL[r.status] ?? r.status}

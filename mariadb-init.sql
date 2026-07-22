@@ -6,9 +6,9 @@
 --   2. Buka editor SQL database itu (atau mysql CLI / phpMyAdmin) pada database target.
 --   3. Copy-paste SELURUH isi file ini lalu jalankan.
 --   4. Deploy aplikasi (Coolify). Saat start, `prisma migrate deploy` akan
---      melihat migrasi `20260721000000_init` dan `20260722000000_add_no_rpp` sudah
---      tercatat (baris _prisma_migrations di bawah) → dilewati. `db:seed` upsert
---      admin (sudah ada → no-op).
+--      melihat migrasi `20260721000000_init`, `20260722000000_add_no_rpp`, dan
+--      `20260723000000_add_ai_config` sudah tercatat (baris _prisma_migrations
+--      di bawah) → dilewati. `db:seed` upsert admin (sudah ada → no-op).
 --
 -- AKUN ADMIN AWAL:
 --   username : admin
@@ -22,12 +22,13 @@
 --   beda), jalankan sekali di container:
 --     npx prisma migrate resolve --schema=prisma/prod/schema.prisma --applied 20260721000000_init
 --     npx prisma migrate resolve --schema=prisma/prod/schema.prisma --applied 20260722000000_add_no_rpp
+--     npx prisma migrate resolve --schema=prisma/prod/schema.prisma --applied 20260723000000_add_ai_config
 --   lalu restart. Ini menandai migrasi sebagai applied tanpa cek checksum.
 --
 -- Idempoten: semua INSERT memakai ON DUPLICATE KEY UPDATE, aman dijalankan ulang.
 -- ============================================================================
 
--- ---------- Skema (init + add_no_rpp) ----------
+-- ---------- Skema (init + add_no_rpp + add_ai_config) ----------
 
 CREATE TABLE `users` (
     `id` VARCHAR(191) NOT NULL,
@@ -103,6 +104,7 @@ CREATE TABLE `rpp` (
     `status` ENUM('DRAFT', 'DIAJUKAN', 'DIREVIEW_PJ', 'DISETUJUI_KEPALA') NOT NULL DEFAULT 'DRAFT',
     `tanggalPengesahan` DATETIME(3) NOT NULL,
     `dibuatOleh` VARCHAR(191) NOT NULL,
+    `dibuatDenganAI` BOOLEAN NOT NULL DEFAULT false,
     `deletedAt` DATETIME(3) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
@@ -110,6 +112,17 @@ CREATE TABLE `rpp` (
     INDEX `rpp_guruId_idx`(`guruId`),
     INDEX `rpp_guruId_noRpp_idx`(`guruId`, `noRpp`),
     INDEX `rpp_mapelId_kelasId_idx`(`mapelId`, `kelasId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `pengaturan_ai` (
+    `id` VARCHAR(191) NOT NULL DEFAULT 'singleton',
+    `enabled` BOOLEAN NOT NULL DEFAULT false,
+    `endpoint` VARCHAR(191) NULL,
+    `apiKeyEnc` TEXT NULL,
+    `model` VARCHAR(191) NULL,
+    `updatedAt` DATETIME(3) NOT NULL,
+
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -249,6 +262,16 @@ VALUES (
     'afec453f-4386-4b3a-b56c-65f6864c6466',
     '0a7e451c90d11ce2a81641d9e0caed217a2f1771533f7fe2b7c3af52e1000b71',
     NOW(3), '20260722000000_add_no_rpp', NULL, NULL, NOW(3), 1
+)
+ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
+
+-- Penanda migrasi add_ai_config sudah diterapkan (checksum = sha256 isi
+-- prisma/prod/migrations/20260723000000_add_ai_config/migration.sql).
+INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
+VALUES (
+    '95c87d6d-6c5b-4998-9017-d8e78f30511d',
+    'fad2a62f135c4569603446378c796c85c86eabd7c8c324f2bd6d17a50f9376c6',
+    NOW(3), '20260723000000_add_ai_config', NULL, NULL, NOW(3), 1
 )
 ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
 

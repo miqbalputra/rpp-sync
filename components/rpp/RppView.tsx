@@ -5,6 +5,7 @@ import { rppBodyHtml } from "@/lib/rpp/view-html";
 
 export type RppViewData = {
   noRpp?: string | null;
+  dibuatDenganAI?: boolean;
   materi: string;
   alokasiWaktu: string;
   tujuanPembelajaran: string;

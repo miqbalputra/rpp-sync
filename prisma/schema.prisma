@@ -176,6 +176,7 @@ model Rpp {
   status            RppStatus   @default(DRAFT)
   tanggalPengesahan DateTime
   dibuatOleh        String
+  dibuatDenganAI    Boolean     @default(false) // true jika dibuat lewat flow "Dibantu AI"
   deletedAt         DateTime?
 
   createdAt         DateTime    @default(now())
@@ -301,4 +302,17 @@ model NotifikasiDibaca {
   @@id([userId, notifikasiId])
   @@index([notifikasiId])
   @@map("notifikasi_dibaca")
+}
+
+// Konfigurasi AI (endpoint, API key terenkripsi, model terpilih) — diatur Admin.
+// Singleton: id selalu "singleton" (satu baris saja).
+model PengaturanAi {
+  id        String   @id @default("singleton")
+  enabled   Boolean  @default(false)
+  endpoint  String?  // base URL OpenAI-compatible, cth: https://host/v1
+  apiKeyEnc String?  // API key terenkripsi (AES-256-GCM), lihat lib/ai/crypto.ts
+  model     String?  // nama model vision terpilih
+  updatedAt DateTime @updatedAt
+
+  @@map("pengaturan_ai")
 }

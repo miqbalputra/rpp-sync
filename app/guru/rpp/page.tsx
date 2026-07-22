@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Plus, FileText, Clock, Search } from "lucide-react";
+import { AiBadge } from "@/components/rpp/AiBadge";
 
 export const metadata = { title: "RPP Saya — Guru" };
 
@@ -104,6 +105,7 @@ export default async function MyRppPage({
                     {r.noRpp && (
                       <Badge variant="info" className="font-mono">No. {r.noRpp}</Badge>
                     )}
+                    {r.dibuatDenganAI && <AiBadge />}
                     <span className="text-xs text-muted-foreground">{r.mapel.namaMapel} · {r.kelas.namaKelas}</span>
                   </div>
                   <Link href={`/guru/rpp/${r.id}`} className="block font-semibold text-foreground hover:text-primary mt-1.5 truncate transition-colors">

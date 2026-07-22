@@ -3,9 +3,11 @@
 import { prisma } from "@/lib/db";
 import { requireGuru } from "@/lib/auth-guard";
 import { getGuruIdFromSession, assertOwnsRpp, getNamaKepalaSekolah } from "@/lib/rpp/queries";
-import { RppFormSchema, RppFormValues, RppActionResult } from "@/lib/rpp/schema";
+import { RppFormSchema, RppFormValues, RppActionResult, AiDraft } from "@/lib/rpp/schema";
 import { getOrCreateExport, ExportTipe } from "@/lib/rpp/export";
 import { revalidatePath } from "next/cache";
+import { getAiConfig } from "@/lib/ai/client";
+import { generateRppFromImage } from "@/lib/ai/generate-rpp";
 
 /** Pastikan mapel+kelas terpilih adalah milik penugasan guru. */
 async function validatePenugasan(guruId: string, mapelId: string, kelasId: string) {
@@ -15,8 +17,12 @@ async function validatePenugasan(guruId: string, mapelId: string, kelasId: strin
   if (!t) throw new Error("Mapel/Kelas yang dipilih bukan bagian penugasan Anda");
 }
 
-export async function createRpp(values: RppFormValues): Promise<RppActionResult> {
-  const session = await requireGuru();
+/** Helper simpan RPP baru. Dipakai createRpp (manual) & createRppAi (AI). */
+async function persistRpp(
+  values: RppFormValues,
+  session: Awaited<ReturnType<typeof requireGuru>>,
+  opts: { ai: boolean }
+): Promise<RppActionResult> {
   try {
     const guruId = await getGuruIdFromSession(session);
     if (!guruId) return { ok: false, error: "Profil guru tidak ditemukan" };
@@ -43,6 +49,7 @@ export async function createRpp(values: RppFormValues): Promise<RppActionResult>
           status: "DRAFT",
           tanggalPengesahan,
           dibuatOleh: session.user.id,
+          dibuatDenganAI: opts.ai,
           pertemuan: {
             create: d.pertemuan.map((p, i) => ({
               urutan: i + 1,
@@ -67,6 +74,46 @@ export async function createRpp(values: RppFormValues): Promise<RppActionResult>
   } catch (e: any) {
     return { ok: false, error: e?.message ?? "Gagal menyimpan RPP" };
   }
+}
+
+export async function createRpp(values: RppFormValues): Promise<RppActionResult> {
+  const session = await requireGuru();
+  return persistRpp(values, session, { ai: false });
+}
+
+/** Simpan RPP yang dibuat lewat flow AI (flag dibuatDenganAI = true). */
+export async function createRppAi(values: RppFormValues): Promise<RppActionResult> {
+  const session = await requireGuru();
+  return persistRpp(values, session, { ai: true });
+}
+
+type GenerateOutcome = { ok: true; draft: AiDraft } | { ok: false; error: string };
+
+/** Generate draft RPP dari foto materi via AI. Tidak persist — kembalikan draft. */
+export async function generateRppDraft(formData: FormData): Promise<GenerateOutcome> {
+  await requireGuru();
+
+  const cfg = await getAiConfig();
+  if (!cfg || !cfg.enabled) {
+    return { ok: false, error: "Fitur AI belum diaktifkan Admin." };
+  }
+
+  const file = formData.get("foto");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "Foto materi wajib diunggah." };
+  }
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type)) {
+    return { ok: false, error: "Format foto harus JPG/PNG/WebP." };
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return { ok: false, error: "Ukuran foto maksimal 5MB." };
+  }
+
+  const buf = Buffer.from(await file.arrayBuffer());
+  const res = await generateRppFromImage(buf, file.type);
+  if (!res.ok) return { ok: false, error: res.error };
+  return { ok: true, draft: res.draft };
 }
 
 export async function updateRpp(id: string, values: RppFormValues): Promise<RppActionResult> {
@@ -172,6 +219,7 @@ export async function getShareUrl(rppId: string, tipeParam: "image" | "pdf" | "w
     const namaKepalaSekolah = await getNamaKepalaSekolah();
     const data = {
       noRpp: rpp.noRpp,
+      dibuatDenganAI: rpp.dibuatDenganAI,
       materi: rpp.materi, alokasiWaktu: rpp.alokasiWaktu, tujuanPembelajaran: rpp.tujuanPembelajaran,
       tanggalPengesahan: rpp.tanggalPengesahan, mapelNama: rpp.mapel.namaMapel, kelasNama: rpp.kelas.namaKelas,
       kelasGender: rpp.kelas.gender, semester: rpp.kelas.semester, tahunAjaran: rpp.kelas.tahunAjaran,

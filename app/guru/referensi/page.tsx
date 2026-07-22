@@ -6,6 +6,7 @@ import { duplicateRpp } from "./actions";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Copy, Eye } from "lucide-react";
+import { AiBadge } from "@/components/rpp/AiBadge";
 
 export const metadata = { title: "Referensi — Guru" };
 
@@ -66,6 +67,7 @@ export default async function ReferensiPage({
                 <span className="text-xs text-muted-foreground">{r.mapel.namaMapel} · {r.kelas.namaKelas}</span>
                 <span className="text-xs text-muted-foreground">oleh {r.guru?.namaTampil ?? "—"}</span>
                 {r.noRpp && <span className="text-xs font-mono text-foreground">No. {r.noRpp}</span>}
+                {r.dibuatDenganAI && <AiBadge />}
               </div>
               <div className="font-semibold text-foreground">{r.materi}</div>
               <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.tujuanPembelajaran}</div>

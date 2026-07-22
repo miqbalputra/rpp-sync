@@ -84,11 +84,13 @@ export function Button({
   variant = "primary",
   type = "button",
   className = "",
+  disabled = false,
 }: {
   children: ReactNode;
   variant?: "primary" | "secondary" | "danger";
   type?: "button" | "submit";
   className?: string;
+  disabled?: boolean;
 }) {
   const variantMap = {
     primary: "default",
@@ -100,6 +102,7 @@ export function Button({
       type={type}
       variant={variantMap[variant]}
       className={className}
+      disabled={disabled}
     >
       {children}
     </UIButton>

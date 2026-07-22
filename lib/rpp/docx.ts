@@ -76,12 +76,21 @@ export async function buildRppDocxBuffer(data: RppViewData): Promise<Buffer> {
     judul.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { after: 120 },
+        spacing: { after: data.dibuatDenganAI ? 0 : 120 },
         children: [new TextRun({ text: `No. RPP: `, size: 20 }), new TextRun({ text: data.noRpp, bold: true, size: 20 })], // 10pt
       })
     );
   } else {
-    judul.push(new Paragraph({ spacing: { after: 120 }, children: [] }));
+    judul.push(new Paragraph({ spacing: { after: data.dibuatDenganAI ? 0 : 120 }, children: [] }));
+  }
+  if (data.dibuatDenganAI) {
+    judul.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 120 },
+        children: [new TextRun({ text: "✦ Dibantu AI", italics: true, color: "065F46", size: 20 })], // emerald-800, 10pt
+      })
+    );
   }
 
   // ----- Tabel meta (4 kolom) -----

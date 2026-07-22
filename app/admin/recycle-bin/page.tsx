@@ -6,7 +6,7 @@ import PermanentDeleteButton from "@/components/admin/PermanentDeleteButton";
 import {
   Table, TableHead, TableHeader, TableBody, TableRow, TableCell,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { AiBadge } from "@/components/rpp/AiBadge";
 
 export const metadata = { title: "Sampah / Recycle Bin — Admin" };
 
@@ -42,7 +42,12 @@ export default async function RecycleBinPage() {
               {rpp.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-mono text-xs text-muted-foreground">{r.noRpp ?? "—"}</TableCell>
-                  <TableCell className="font-medium text-foreground">{r.materi}</TableCell>
+                  <TableCell className="font-medium text-foreground">
+                    <div className="flex items-center gap-2">
+                      <span>{r.materi}</span>
+                      {r.dibuatDenganAI && <AiBadge />}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{r.guru?.namaTampil ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {r.mapel.namaMapel} / {r.kelas.namaKelas}

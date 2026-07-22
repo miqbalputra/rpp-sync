@@ -54,10 +54,16 @@ export function rppBodyHtml(data: RppViewData): string {
     rows.push(data.pertemuan.slice(i, i + 2));
   }
 
-  // ----- Header (judul + No. RPP) -----
+  // ----- Header (judul + No. RPP + penanda AI) -----
+  const noRppLine = data.noRpp
+    ? `<div style="text-align:center;font-size:12px;color:${C.muted};margin-top:2px;">No. RPP: <strong style="font-weight:600;">${esc(data.noRpp)}</strong></div>`
+    : "";
+  const aiLine = data.dibuatDenganAI
+    ? `<div style="text-align:center;font-size:11px;color:${C.headerText};margin-top:2px;font-style:italic;">✦ Dibantu AI</div>`
+    : "";
   const header = `<div style="border:2px solid ${C.titleBorder};padding:8px 12px;margin-bottom:12px;">
     <div style="text-align:center;font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:0.05em;color:${C.text};">Rencana Pelaksanaan Pembelajaran</div>
-    ${data.noRpp ? `<div style="text-align:center;font-size:12px;color:${C.muted};margin-top:2px;">No. RPP: <strong style="font-weight:600;">${esc(data.noRpp)}</strong></div>` : ""}
+    ${noRppLine}${aiLine}
   </div>`;
 
   // ----- Tabel meta (4 kolom: label | value | label | value) -----
