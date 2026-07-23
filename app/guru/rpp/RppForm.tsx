@@ -50,7 +50,7 @@ export default function RppForm({
       alokasiWaktu: "",
       tujuanPembelajaran: "",
       tanggalPengesahan: today,
-      pertemuan: [{ isiKegiatan: "" }],
+      pertemuan: [{ isiKegiatan: "", tanggal: "" }],
       penilaian: { pengetahuan: "", keterampilan: "", sikap: "" },
     },
   });
@@ -162,7 +162,7 @@ export default function RppForm({
           <h2 className="text-sm font-semibold text-foreground">Kegiatan Pembelajaran</h2>
           <button
             type="button"
-            onClick={() => append({ isiKegiatan: "" })}
+            onClick={() => append({ isiKegiatan: "", tanggal: "" })}
             className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" /> Tambah Pertemuan
@@ -184,6 +184,17 @@ export default function RppForm({
                   >
                     Hapus
                   </button>
+                )}
+              </div>
+              <div className="mb-2">
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Tanggal KBM (opsional)</label>
+                <input
+                  type="date"
+                  className={inputCls + " h-9"}
+                  {...register(`pertemuan.${i}.tanggal`)}
+                />
+                {errors.pertemuan?.[i]?.tanggal && (
+                  <p className={errCls}>{errors.pertemuan[i]?.tanggal?.message}</p>
                 )}
               </div>
               <textarea

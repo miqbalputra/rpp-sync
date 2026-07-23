@@ -21,7 +21,14 @@ export async function duplicateRpp(sourceId: string) {
   if (src.guruId === guruId) redirect("/guru/referensi?error=" + encodeURIComponent("Tidak bisa menduplikat RPP sendiri"));
 
   const hasPenugasan = await prisma.penugasan.findFirst({
-    where: { guruId, mapelId: src.mapelId, kelasId: src.kelasId },
+    where: {
+      guruId,
+      mapelId: src.mapelId,
+      kelasId: src.kelasId,
+      deletedAt: null,
+      mapel: { deletedAt: null },
+      kelas: { deletedAt: null },
+    },
   });
   if (!hasPenugasan) {
     redirect("/guru/referensi?error=" + encodeURIComponent("Anda tidak mengampu mapel+kelas yang sama"));
@@ -44,6 +51,7 @@ export async function duplicateRpp(sourceId: string) {
           create: src.pertemuan.map((p, i) => ({
             urutan: i + 1,
             isiKegiatan: p.isiKegiatan,
+            tanggal: p.tanggal,
           })),
         },
         penilaian: src.penilaian

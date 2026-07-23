@@ -16,7 +16,7 @@ export default async function EditKelasPage({
 }) {
   const { id } = await params;
   const { error } = await searchParams;
-  const kelas = await prisma.kelas.findUnique({ where: { id } });
+  const kelas = await prisma.kelas.findFirst({ where: { id, deletedAt: null } });
   if (!kelas) notFound();
 
   return (

@@ -1,7 +1,7 @@
 # Progress — Aplikasi Sinkronisasi RPP
 **Griya Qur'an "Tunas Ilmu" — Purbalingga**
 
-Terakhir diperbarui: 2026-07-21
+Terakhir diperbarui: 2026-07-22
 
 ## Status keseluruhan
 
@@ -334,3 +334,77 @@ Alternatif init manual (selain auto-migrate saat container start). Satu file ber
   (`lib/rpp/template.ts`, `lib/rpp/docx.ts`).
 - Role Kepala Sekolah & PJ Diniyyah: skema + RBAC siap, alur approval penuh
   ditangguhkan ke v1.2.
+
+## Penyempurnaan sesi 2026-07-22
+
+Sejumlah peningkatan pasca-MVP di atas fondasi Tahap 0–12:
+
+1. **Tanggal KBM per pertemuan** — `RppPertemuan.tanggal DateTime?` (opsional).
+   Diinput per baris pertemuan di form RPP; tampil di RppView (layar + export gambar/PDF
+   via `lib/rpp/view-html.ts`) dan di export Word (`lib/rpp/docx.ts`, `txt()` kini
+   mendukung `italics`). Skema Zod (`lib/rpp/schema.ts`) + persist/restore di
+   `app/guru/rpp/actions.ts` & `app/guru/referensi/actions.ts` (duplikat).
+2. **Pencarian instant** — `/guru/rpp` & `/guru/referensi` memfilter saat mengetik
+   (client), tanpa tombol "Cari". Komponen `RppListSearch` & `ReferensiFilterClient`.
+   **Catatan teknis penting:** utility Tailwind `flex` meng-override atribut HTML
+   `hidden` — jadi menyembunyikan baris **harus** pakai inline `el.style.display`,
+   bukan `el.hidden`.
+3. **Akun Kepala Sekolah** — user membuat sendiri via menu Admin (tidak di-provision
+   otomatis dengan password hardcoded). `getNamaKepalaSekolah` mengambil Kepala
+   Sekolah aktif untuk auto-fill pengesahan RPP.
+4. **Dashboard statistik dibagikan 3 role** — `components/dashboard/SchoolStatsDashboard.tsx`
+   (server component, props `linkable` & `showOverviewCards`): RPP per Kelas/Mapel/Guru
+   (BarList), **RPP AI vs Manual** (bar proporsi), **Cakupan Penugasan vs RPP**
+   (bar + daftar penugasan belum punya RPP), **Trend RPP per bulan** (6 bulan, bar
+   vertikal dari `createdAt`). Admin: `linkable` (baris → route manajemen);
+   Kepala Sekolah & PJ Diniyyah: `linkable=false` + kartu overview (read-only oversight).
+5. **Sampah universal (soft-delete) untuk SEMUA entitas** — `deletedAt DateTime?`
+   ditambahkan ke `User`, `Guru`, `Mapel`, `Kelas`, `Penugasan`, `Jadwal` (Rpp sudah punya).
+   - Semua aksi hapus (kelas/mapel/penugasan/jadwal/user) kini **soft-delete**
+     (`update deletedAt`), bukan `prisma.X.delete`. `deleteUser` juga soft-delete
+     profil **Guru**-nya dalam satu transaksi. Tidak ada lagi penolakan "tidak bisa
+     dihapus karena dipakai" — soft-delete selalu berhasil; data terkait hanya
+     disembunyikan.
+   - **Filter `deletedAt: null`** di semua query tampilan: login (user terhapus
+     diblok), list Admin (users/mapel/kelas/penugasan + dropdown & form baru),
+     edit pages (404 jika buka item terhapus), export-guru, `SchoolStatsDashboard`,
+     counts dashboard Admin, list Jadwal, opsi form guru, validasi penugasan,
+     halaman Referensi. **Filter relasi** (`parent.deletedAt = null`) menyembunyikan
+     anak tanpa cascade-soft: penugasan/jadwal/RPP yang mapel/kelas/guru-nya masuk
+     sampah otomatis tersembunyi; restore cukup satu baris.
+   - **Unique constraint dipertahankan** (email/username/namaMapel/composite
+     penugasan & jadwal). Membuat ulang nama yang sudah ada di sampah → pesan
+     "sudah ada" → admin/guru memulihkan dari sampah. Restore selalu aman karena
+     constraint unik menjamin tidak ada duplikat aktif.
+   - **Recycle bin Admin diperluas** (`/admin/recycle-bin`) — kini menampilkan
+     **semua tipe** (RPP, User, Mapel, Kelas, Penugasan, Jadwal) dengan Pulihkan
+     + Hapus Permanen. Kartu dashboard Admin "Item di Sampah" = total seluruh tipe.
+6. **Menu Sampah untuk Guru** — sidebar guru kini punya menu "Sampah" (`/guru/sampah`).
+   Guru melihat & mengelola **RPP milik sendiri** yang terhapus: Pulihkan atau
+   Hapus Permanen (konfirmasi ketat ketik nama materi via `PermanentDeleteButton`).
+   `app/guru/sampah/{page,actions}.tsx` — `assertOwnsRpp` verifikasi kepemilikan;
+   aksi hanya berlaku untuk RPP yang benar-benar ada di sampah (`deletedAt` tidak
+   null) agar guru tidak bisa menghapus permanen RPP aktif langsung.
+
+### Konfirmasi ketat (PRD §5.6)
+`components/admin/PermanentDeleteButton.tsx` — tombol dua-langkah: klik untuk
+"arm", lalu **ketik persis** nama/label item untuk mengaktifkan tombol Konfirmasi.
+Dipakai untuk hapus permanen di recycle bin Admin (semua tipe) maupun Sampah Guru.
+
+### Verifikasi pasca-sesi 2026-07-22
+- `tsc --noEmit` → bersih (exit 0) setelah tiap kelompok perubahan.
+- `prisma db push` + `generate` sukses (skema dev SQLite).
+- Dev server jalan tanpa error; route baru `/guru/sampah` terdaftar; smoke HTTP
+  route terproteksi → 307 (belum sesi).
+- Tidak ada `prisma.X.delete` tersisa di luar `app/admin/recycle-bin/actions.ts`
+  (permanent delete — memang diharapkan).
+
+### ⚠️ TODO maintenance deploy (penting)
+Perubahan skema sesi ini **belum disinkronkan ke artefak deploy**:
+1. `prisma/prod/schema.prisma` — tambahkan `deletedAt DateTime?` ke 6 model
+   (User, Guru, Mapel, Kelas, Penugasan, Jadwal) agar mirror skema dev.
+2. Regenerasi migrasi prod (`prisma/prod/migrations`) + `mariadb-init.sql`
+   (DDL + checksum `_prisma_migrations`) — atau `prisma migrate diff --from-empty
+   --to-schema-datamodel prisma/prod/schema.prisma`. Tanpa ini, deploy Coolify
+   akan out-of-sync dengan skema dev.
+3. Jalankan saat sudah siap menuju deploy (Tahap 12 eksekusi).

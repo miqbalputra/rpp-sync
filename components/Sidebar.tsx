@@ -32,6 +32,7 @@ const NAVS: Record<ShellVariant, NavEntry[]> = {
     { href: "/guru", label: "Dashboard", icon: LayoutDashboard },
     { href: "/guru/rpp", label: "RPP Saya", icon: FileText },
     { href: "/guru/referensi", label: "Referensi", icon: Search },
+    { href: "/guru/sampah", label: "Sampah", icon: Trash2 },
   ],
   kepala: [
     { href: "/kepala", label: "Dashboard", icon: LayoutDashboard },

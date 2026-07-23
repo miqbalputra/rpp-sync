@@ -15,6 +15,15 @@ const DAY_TO_HARI: Hari[] = [
 
 export async function listJadwalForAdmin() {
   const rows = await prisma.jadwal.findMany({
+    where: {
+      deletedAt: null,
+      penugasan: {
+        deletedAt: null,
+        guru: { deletedAt: null },
+        mapel: { deletedAt: null },
+        kelas: { deletedAt: null },
+      },
+    },
     include: {
       penugasan: {
         include: {
@@ -36,7 +45,10 @@ export async function listJadwalForAdmin() {
 
 export async function listJadwalForGuru(guruId: string) {
   const rows = await prisma.jadwal.findMany({
-    where: { penugasan: { guruId } },
+    where: {
+      deletedAt: null,
+      penugasan: { guruId, deletedAt: null, mapel: { deletedAt: null }, kelas: { deletedAt: null } },
+    },
     include: {
       penugasan: {
         include: { mapel: true, kelas: true },
@@ -53,6 +65,12 @@ export async function listJadwalForGuru(guruId: string) {
 /** Opsi Penugasan untuk form jadwal: label "guru -> mapel -> kelas". */
 export async function getOpsiPenugasanForJadwal() {
   const rows = await prisma.penugasan.findMany({
+    where: {
+      deletedAt: null,
+      guru: { deletedAt: null },
+      mapel: { deletedAt: null },
+      kelas: { deletedAt: null },
+    },
     include: {
       guru: { include: { user: { select: { nama: true } } } },
       mapel: true,
@@ -85,6 +103,12 @@ export type PenugasanTreeNode = {
 
 export async function getPenugasanTreeForJadwal(): Promise<PenugasanTreeNode[]> {
   const rows = await prisma.penugasan.findMany({
+    where: {
+      deletedAt: null,
+      guru: { deletedAt: null },
+      mapel: { deletedAt: null },
+      kelas: { deletedAt: null },
+    },
     include: {
       guru: { include: { user: { select: { gender: true } } } },
       mapel: true,
@@ -132,7 +156,11 @@ export async function getOverdueAlertsForGuru(
   const todayStr = now.toTimeString().slice(0, 5); // "HH:mm" lokal
 
   const jadwals = await prisma.jadwal.findMany({
-    where: { penugasan: { guruId }, hari: todayHari },
+    where: {
+      deletedAt: null,
+      hari: todayHari,
+      penugasan: { guruId, deletedAt: null, mapel: { deletedAt: null }, kelas: { deletedAt: null } },
+    },
     include: { penugasan: { include: { mapel: true, kelas: true } } },
   });
 

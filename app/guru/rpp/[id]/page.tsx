@@ -57,7 +57,7 @@ export default async function RppDetailPage({
     namaUstadz: rpp.guru?.namaTampil ?? session?.user?.name ?? "",
     namaKepalaSekolah,
     tempat: "Purbalingga",
-    pertemuan: rpp.pertemuan.map((p) => ({ urutan: p.urutan, isiKegiatan: p.isiKegiatan })),
+    pertemuan: rpp.pertemuan.map((p) => ({ urutan: p.urutan, isiKegiatan: p.isiKegiatan, tanggal: p.tanggal })),
     penilaian: rpp.penilaian
       ? { pengetahuan: rpp.penilaian.pengetahuan, keterampilan: rpp.penilaian.keterampilan, sikap: rpp.penilaian.sikap }
       : null,

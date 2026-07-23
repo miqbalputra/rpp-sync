@@ -40,8 +40,10 @@ export async function createJadwal(formData: FormData) {
 
 export async function deleteJadwal(id: string) {
   await requireAdminOrPj();
-  await prisma.jadwal.delete({ where: { id } });
+  // Soft-delete: pindahkan ke Sampah (bisa dipulihkan oleh Admin).
+  await prisma.jadwal.update({ where: { id }, data: { deletedAt: new Date() } });
   revalidatePath("/jadwal");
   revalidatePath("/guru");
+  revalidatePath("/admin/recycle-bin");
   redirect("/jadwal");
 }

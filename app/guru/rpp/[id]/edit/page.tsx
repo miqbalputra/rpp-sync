@@ -31,7 +31,11 @@ export default async function EditRppPage({
     alokasiWaktu: rpp.alokasiWaktu,
     tujuanPembelajaran: rpp.tujuanPembelajaran,
     tanggalPengesahan: rpp.tanggalPengesahan.toISOString().slice(0, 10),
-    pertemuan: rpp.pertemuan.map((p) => ({ id: p.id, isiKegiatan: p.isiKegiatan })),
+    pertemuan: rpp.pertemuan.map((p) => ({
+      id: p.id,
+      isiKegiatan: p.isiKegiatan,
+      tanggal: p.tanggal ? p.tanggal.toISOString().slice(0, 10) : "",
+    })),
     penilaian: {
       pengetahuan: rpp.penilaian?.pengetahuan ?? "",
       keterampilan: rpp.penilaian?.keterampilan ?? "",

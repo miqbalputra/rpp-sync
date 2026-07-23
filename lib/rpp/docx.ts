@@ -21,8 +21,8 @@ function fmtTanggal(d: Date | string): string {
 const BORDER = { style: BorderStyle.SINGLE, size: 4, color: "94A3B8" }; // slate-400, 0.5pt
 const CELL_BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
 
-function txt(text: string, opts: { bold?: boolean; color?: string; size?: number } = {}): TextRun {
-  return new TextRun({ text, bold: opts.bold, color: opts.color, size: opts.size ?? 22 }); // 11pt
+function txt(text: string, opts: { bold?: boolean; italics?: boolean; color?: string; size?: number } = {}): TextRun {
+  return new TextRun({ text, bold: opts.bold, italics: opts.italics, color: opts.color, size: opts.size ?? 22 }); // 11pt
 }
 
 // Sel biasa (value).
@@ -113,7 +113,7 @@ export async function buildRppDocxBuffer(data: RppViewData): Promise<Buffer> {
   });
 
   // ----- Kegiatan Pembelajaran (pertemuan 2 per baris) -----
-  const pRows: { urutan: number; isiKegiatan: string }[][] = [];
+  const pRows: { urutan: number; isiKegiatan: string; tanggal?: string | Date | null }[][] = [];
   for (let i = 0; i < data.pertemuan.length; i += 2) pRows.push(data.pertemuan.slice(i, i + 2));
   const kegiatanRows: TableRow[] = [
     new TableRow({ children: [hCell("Kegiatan Pembelajaran", 2)] }),
@@ -125,6 +125,9 @@ export async function buildRppDocxBuffer(data: RppViewData): Promise<Buffer> {
           borders: CELL_BORDERS,
           children: [
             new Paragraph({ spacing: { after: 40 }, children: [txt(`Pertemuan ${p.urutan}`, { bold: true, color: "334155" })] }),
+            ...(p.tanggal
+              ? [new Paragraph({ spacing: { after: 40 }, children: [txt(`Tanggal KBM: ${fmtTanggal(p.tanggal)}`, { color: "475569", italics: true })] })]
+              : []),
             ...String(p.isiKegiatan).split("\n").map((l) => new Paragraph({ spacing: { after: 0 }, children: [txt(l)] })),
           ],
         })

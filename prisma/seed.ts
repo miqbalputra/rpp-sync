@@ -60,6 +60,32 @@ async function main() {
       },
     });
     console.log(`✔ Kelas contoh: ${kelas.namaKelas} (${kelas.gender})`);
+
+    // Guru contoh: untuk demo login username (case-insensitive). Username
+    // disimpan lowercase; coba login dengan "GURU01", "guru01", dll.
+    const guruPassword = await bcrypt.hash("guru123", 10);
+    const guruUser = await prisma.user.upsert({
+      where: { email: "guru01@gqtunasilmu.sch.id" },
+      update: {},
+      create: {
+        nama: "Guru Demo",
+        email: "guru01@gqtunasilmu.sch.id",
+        username: "guru01",
+        passwordHash: guruPassword,
+        role: Role.GURU,
+        gender: Gender.IKHWAN,
+        aktif: true,
+      },
+    });
+    // Profil Guru wajib ada untuk role GURU.
+    await prisma.guru.upsert({
+      where: { userId: guruUser.id },
+      update: {},
+      create: { userId: guruUser.id, namaTampil: guruUser.nama },
+    });
+    console.log(
+      `✔ Guru contoh: ${guruUser.email} (username: guru01, password: ${isProd ? "(guru123)" : "guru123"})`,
+    );
   } else {
     console.log("ℹ Data contoh dilewati (SEED_DEMO!=true). Buat mapel/kelas/penugasan via UI Admin.");
   }

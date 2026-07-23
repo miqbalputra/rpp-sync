@@ -18,8 +18,16 @@ export default async function KelasPage({
 }) {
   const { error } = await searchParams;
   const kelas = await prisma.kelas.findMany({
+    where: { deletedAt: null },
     orderBy: [{ tahunAjaran: "desc" }, { namaKelas: "asc" }],
-    include: { _count: { select: { penugasan: true, rpp: true } } },
+    include: {
+      _count: {
+        select: {
+          penugasan: { where: { deletedAt: null } },
+          rpp: { where: { deletedAt: null } },
+        },
+      },
+    },
   });
 
   return (
@@ -61,7 +69,7 @@ export default async function KelasPage({
                     <a href={`/admin/kelas/${k.id}/edit`} className="text-primary text-sm font-medium hover:underline">Edit</a>
                     <DeleteButton
                       action={deleteKelas.bind(null, k.id)}
-                      confirmMessage={`Hapus kelas "${k.namaKelas}"?`}
+                      confirmMessage={`Hapus kelas "${k.namaKelas}"? Dipindahkan ke Sampah; ${k._count.penugasan} penugasan & ${k._count.rpp} RPP terkait disembunyikan. Bisa dipulihkan.`}
                     />
                   </TableCell>
                 </TableRow>

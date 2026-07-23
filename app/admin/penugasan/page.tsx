@@ -14,12 +14,18 @@ export const metadata = { title: "Penugasan — Admin" };
 export default async function PenugasanPage() {
   const [penugasan, guruList, mapelList, kelasList] = await Promise.all([
     prisma.penugasan.findMany({
+      where: {
+        deletedAt: null,
+        guru: { deletedAt: null },
+        mapel: { deletedAt: null },
+        kelas: { deletedAt: null },
+      },
       orderBy: [{ guru: { namaTampil: "asc" } }],
       include: { guru: { include: { user: { select: { nama: true, gender: true } } } }, mapel: true, kelas: true },
     }),
-    prisma.guru.findMany({ orderBy: { namaTampil: "asc" }, include: { user: { select: { nama: true, gender: true } } } }),
-    prisma.mapel.findMany({ orderBy: { namaMapel: "asc" } }),
-    prisma.kelas.findMany({ orderBy: { namaKelas: "asc" } }),
+    prisma.guru.findMany({ where: { deletedAt: null }, orderBy: { namaTampil: "asc" }, include: { user: { select: { nama: true, gender: true } } } }),
+    prisma.mapel.findMany({ where: { deletedAt: null }, orderBy: { namaMapel: "asc" } }),
+    prisma.kelas.findMany({ where: { deletedAt: null }, orderBy: { namaKelas: "asc" } }),
   ]);
 
   return (
@@ -82,7 +88,7 @@ export default async function PenugasanPage() {
                     <TableCell className="text-right">
                       <DeleteButton
                         action={deletePenugasan.bind(null, p.id)}
-                        confirmMessage={`Hapus penugasan ${p.guru.namaTampil} → ${p.mapel.namaMapel} → ${p.kelas.namaKelas}?`}
+                        confirmMessage={`Hapus penugasan ${p.guru.namaTampil} → ${p.mapel.namaMapel} → ${p.kelas.namaKelas}? Dipindahkan ke Sampah; jadwal terkait disembunyikan. Bisa dipulihkan.`}
                       />
                     </TableCell>
                   </TableRow>

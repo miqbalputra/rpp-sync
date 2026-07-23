@@ -36,7 +36,12 @@ export async function createPenugasan(formData: FormData) {
 
 export async function deletePenugasan(id: string) {
   await requireAdmin();
-  await prisma.penugasan.delete({ where: { id } });
+  // Soft-delete: pindahkan ke Sampah. Jadwal terkait disembunyikan lewat filter
+  // relasi (penugasan.deletedAt = null). Bisa dipulihkan dari Sampah.
+  await prisma.penugasan.update({ where: { id }, data: { deletedAt: new Date() } });
   revalidatePath("/admin/penugasan");
+  revalidatePath("/admin");
+  revalidatePath("/admin/recycle-bin");
+  revalidatePath("/jadwal");
   redirect("/admin/penugasan");
 }

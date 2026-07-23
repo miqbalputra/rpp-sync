@@ -12,7 +12,7 @@ export async function GET() {
   await requireAdmin();
 
   const users = await prisma.user.findMany({
-    where: { role: Role.GURU },
+    where: { role: Role.GURU, deletedAt: null },
     orderBy: { nama: "asc" },
     select: { nama: true, username: true, email: true, gender: true, aktif: true },
   });

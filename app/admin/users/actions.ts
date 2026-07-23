@@ -38,7 +38,7 @@ export async function createUser(formData: FormData) {
   const parsed = UserCreateSchema.safeParse({
     nama: formData.get("nama"),
     email: String(formData.get("email") ?? "").toLowerCase(),
-    username: formData.get("username"),
+    username: String(formData.get("username") ?? "").toLowerCase(),
     password: formData.get("password"),
     role: formData.get("role"),
     gender: formData.get("gender") || undefined,
@@ -56,7 +56,7 @@ export async function createUser(formData: FormData) {
         nama: data.nama.trim(),
         email: data.email,
         username: data.username.trim(),
-        passwordHash,
+        passwordHash, // username sudah di-lowercase saat parse
         role: data.role,
         gender: (data.gender as Gender) ?? null,
         aktif: data.aktif === "on",
@@ -79,7 +79,7 @@ export async function updateUser(id: string, formData: FormData) {
   const parsed = UserUpdateSchema.safeParse({
     nama: formData.get("nama"),
     email: String(formData.get("email") ?? "").toLowerCase(),
-    username: formData.get("username"),
+    username: String(formData.get("username") ?? "").toLowerCase(),
     password: formData.get("password") || undefined,
     role: formData.get("role"),
     gender: formData.get("gender") || undefined,
@@ -92,7 +92,7 @@ export async function updateUser(id: string, formData: FormData) {
   const update: any = {
     nama: data.nama.trim(),
     email: data.email,
-    username: data.username.trim(),
+    username: data.username.trim(), // username sudah di-lowercase saat parse
     role: data.role,
     gender: (data.gender as Gender) ?? null,
     aktif: data.aktif === "on",
@@ -119,13 +119,17 @@ export async function updateUser(id: string, formData: FormData) {
 
 export async function deleteUser(id: string) {
   await requireAdmin();
-  try {
-    await prisma.user.delete({ where: { id } });
-  } catch (e: any) {
-    redirect(`/admin/users?error=${encodeURIComponent("User tidak bisa dihapus (mungkin masih ada RPP/log terkait). Nonaktifkan saja.")}`);
-  }
+  // Soft-delete: pindahkan ke Sampah, bukan hapus permanen. User tidak bisa login
+  // (filter deletedAt: null di authorize) & profil Gurunya disembunyikan dari
+  // dropdown penugasan. RPP/penugasan terkait tetap utuh, hanya disembunyikan
+  // lewat filter relasi (guru.deletedAt = null). Bisa dipulihkan dari Sampah.
+  await prisma.$transaction([
+    prisma.user.update({ where: { id }, data: { deletedAt: new Date() } }),
+    prisma.guru.updateMany({ where: { userId: id }, data: { deletedAt: new Date() } }),
+  ]);
   revalidatePath("/admin/users");
   revalidatePath("/admin");
+  revalidatePath("/admin/recycle-bin");
   redirect("/admin/users");
 }
 
@@ -199,7 +203,7 @@ export async function importGuru(formData: FormData): Promise<ImportGuruResult> 
         data: {
           nama: r.nama,
           email: emailLow,
-          username: r.username,
+          username: userLow, // simpan lowercase agar login case-insensitive
           passwordHash,
           role: Role.GURU,
           gender: (r.gender as Gender) ?? null,

@@ -32,6 +32,7 @@ export default async function UsersPage({
 }) {
   const { error } = await searchParams;
   const users = await prisma.user.findMany({
+    where: { deletedAt: null },
     orderBy: [{ nama: "asc" }],
     select: {
       id: true, nama: true, email: true, username: true,
@@ -111,7 +112,7 @@ export default async function UsersPage({
                     </a>
                     <DeleteButton
                       action={deleteUser.bind(null, u.id)}
-                      confirmMessage={`Hapus user "${u.nama}"? Tindakan ini permanen.`}
+                      confirmMessage={`Hapus user "${u.nama}"? User dipindahkan ke Sampah & tidak bisa login. Bisa dipulihkan dari Sampah.`}
                     />
                   </TableCell>
                 </TableRow>

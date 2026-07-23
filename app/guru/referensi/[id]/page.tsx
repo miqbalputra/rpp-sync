@@ -40,7 +40,14 @@ export default async function ReferensiDetailPage({
     guruId &&
     rpp.guruId !== guruId &&
     (await prisma.penugasan.findFirst({
-      where: { guruId, mapelId: rpp.mapelId, kelasId: rpp.kelasId },
+      where: {
+        guruId,
+        mapelId: rpp.mapelId,
+        kelasId: rpp.kelasId,
+        deletedAt: null,
+        mapel: { deletedAt: null },
+        kelas: { deletedAt: null },
+      },
     })) !== null;
 
   if (!allowed) notFound();
@@ -61,7 +68,7 @@ export default async function ReferensiDetailPage({
     namaUstadz: rpp.guru?.namaTampil ?? "",
     namaKepalaSekolah,
     tempat: "Purbalingga",
-    pertemuan: rpp.pertemuan.map((p) => ({ urutan: p.urutan, isiKegiatan: p.isiKegiatan })),
+    pertemuan: rpp.pertemuan.map((p) => ({ urutan: p.urutan, isiKegiatan: p.isiKegiatan, tanggal: p.tanggal })),
     penilaian: rpp.penilaian
       ? { pengetahuan: rpp.penilaian.pengetahuan, keterampilan: rpp.penilaian.keterampilan, sikap: rpp.penilaian.sikap }
       : null,

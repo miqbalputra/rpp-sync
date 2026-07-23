@@ -74,7 +74,7 @@ export default async function JadwalPage() {
                     <TableCell className="text-right">
                       <DeleteButton
                         action={deleteJadwal.bind(null, j.id)}
-                        confirmMessage={`Hapus jadwal ${HARI_LABEL[j.hari]} ${j.jamMulai}–${j.jamSelesai} (${p.guru.namaTampil} → ${p.mapel.namaMapel} → ${p.kelas.namaKelas})?`}
+                        confirmMessage={`Hapus jadwal ${HARI_LABEL[j.hari]} ${j.jamMulai}–${j.jamSelesai}? Dipindahkan ke Sampah. Bisa dipulihkan oleh Admin.`}
                       />
                     </TableCell>
                   </TableRow>

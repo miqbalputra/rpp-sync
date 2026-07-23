@@ -6,14 +6,20 @@ import { Role } from "@prisma/client";
 /** Ambil guru profile dari session (guruId). */
 export async function getGuruIdFromSession(session: Session | null): Promise<string | null> {
   if (!session?.user?.id || session.user.role !== Role.GURU) return null;
-  const guru = await prisma.guru.findUnique({ where: { userId: session.user.id } });
+  // Abaikan guru yang sudah di-soft-delete (user-nya masuk Sampah).
+  const guru = await prisma.guru.findFirst({ where: { userId: session.user.id, deletedAt: null } });
   return guru?.id ?? null;
 }
 
 /** Opsi dropdown Mapel & Kelas dari Penugasan guru. */
 export async function getOpsiFormGuru(guruId: string) {
   const penugasan = await prisma.penugasan.findMany({
-    where: { guruId },
+    where: {
+      guruId,
+      deletedAt: null,
+      mapel: { deletedAt: null },
+      kelas: { deletedAt: null },
+    },
     include: { mapel: true, kelas: true },
   });
   // Mapel unik
@@ -35,7 +41,7 @@ export async function getOpsiFormGuru(guruId: string) {
 /** Nama Kepala Sekolah aktif (untuk auto-fill pengesahan). */
 export async function getNamaKepalaSekolah(): Promise<string | null> {
   const k = await prisma.user.findFirst({
-    where: { role: Role.KEPALA_SEKOLAH, aktif: true },
+    where: { role: Role.KEPALA_SEKOLAH, aktif: true, deletedAt: null },
     orderBy: { nama: "asc" },
   });
   return k?.nama ?? null;

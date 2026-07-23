@@ -85,7 +85,7 @@ export default function AiRppForm({
       alokasiWaktu: draft.alokasiWaktu,
       tujuanPembelajaran: draft.tujuanPembelajaran,
       tanggalPengesahan: today,
-      pertemuan: draft.pertemuan.map((p) => ({ isiKegiatan: p.isiKegiatan })),
+      pertemuan: draft.pertemuan.map((p) => ({ isiKegiatan: p.isiKegiatan, tanggal: "" })),
       penilaian: { ...draft.penilaian },
     };
     return (

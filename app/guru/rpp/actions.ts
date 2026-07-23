@@ -12,7 +12,14 @@ import { generateRppFromImage } from "@/lib/ai/generate-rpp";
 /** Pastikan mapel+kelas terpilih adalah milik penugasan guru. */
 async function validatePenugasan(guruId: string, mapelId: string, kelasId: string) {
   const t = await prisma.penugasan.findFirst({
-    where: { guruId, mapelId, kelasId },
+    where: {
+      guruId,
+      mapelId,
+      kelasId,
+      deletedAt: null,
+      mapel: { deletedAt: null },
+      kelas: { deletedAt: null },
+    },
   });
   if (!t) throw new Error("Mapel/Kelas yang dipilih bukan bagian penugasan Anda");
 }
@@ -54,6 +61,7 @@ async function persistRpp(
             create: d.pertemuan.map((p, i) => ({
               urutan: i + 1,
               isiKegiatan: p.isiKegiatan,
+              tanggal: p.tanggal ? new Date(p.tanggal + "T00:00:00") : null,
             })),
           },
           penilaian: {
@@ -154,6 +162,7 @@ export async function updateRpp(id: string, values: RppFormValues): Promise<RppA
           rppId: id,
           urutan: i + 1,
           isiKegiatan: p.isiKegiatan,
+          tanggal: p.tanggal ? new Date(p.tanggal + "T00:00:00") : null,
         })),
       });
 
@@ -224,7 +233,7 @@ export async function getShareUrl(rppId: string, tipeParam: "image" | "pdf" | "w
       tanggalPengesahan: rpp.tanggalPengesahan, mapelNama: rpp.mapel.namaMapel, kelasNama: rpp.kelas.namaKelas,
       kelasGender: rpp.kelas.gender, semester: rpp.kelas.semester, tahunAjaran: rpp.kelas.tahunAjaran,
       namaUstadz: rpp.guru?.namaTampil ?? session.user?.name ?? "", namaKepalaSekolah, tempat: "Purbalingga",
-      pertemuan: rpp.pertemuan.map((p) => ({ urutan: p.urutan, isiKegiatan: p.isiKegiatan })),
+      pertemuan: rpp.pertemuan.map((p) => ({ urutan: p.urutan, isiKegiatan: p.isiKegiatan, tanggal: p.tanggal })),
       penilaian: rpp.penilaian ? { pengetahuan: rpp.penilaian.pengetahuan, keterampilan: rpp.penilaian.keterampilan, sikap: rpp.penilaian.sikap } : null,
     };
 

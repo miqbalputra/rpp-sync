@@ -4,6 +4,7 @@ import { z } from "zod";
 export const PertemuanSchema = z.object({
   id: z.string().optional(), // id existing saat edit (untuk update, bukan input user)
   isiKegiatan: z.string().min(1, "Isi kegiatan pertemuan wajib diisi"),
+  tanggal: z.string().optional(), // Tanggal KBM (yyyy-mm-dd), opsional
 });
 
 export const RppFormSchema = z.object({

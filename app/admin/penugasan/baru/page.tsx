@@ -14,11 +14,14 @@ export default async function NewPenugasanPage({
   const { error } = await searchParams;
   const [guruList, mapelList, kelasList, existingRows] = await Promise.all([
     prisma.guru.findMany({
+      where: { deletedAt: null },
       orderBy: { namaTampil: "asc" },
       include: { user: { select: { nama: true, gender: true } } },
     }),
-    prisma.mapel.findMany({ orderBy: { namaMapel: "asc" } }),
-    prisma.kelas.findMany({ orderBy: { namaKelas: "asc" } }),
+    prisma.mapel.findMany({ where: { deletedAt: null }, orderBy: { namaMapel: "asc" } }),
+    prisma.kelas.findMany({ where: { deletedAt: null }, orderBy: { namaKelas: "asc" } }),
+    // existingRows TIDAK difilter deletedAt: duplikat vs baris di Sampah tetap
+    // dicegah (constraint unik DB) — admin diminta memulihkan dari Sampah instead.
     prisma.penugasan.findMany({ select: { guruId: true, mapelId: true, kelasId: true } }),
   ]);
 

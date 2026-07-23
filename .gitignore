@@ -50,5 +50,8 @@ next-env.d.ts
 # Dev log artifact
 .devlog.txt
 
+# Contoh dokumen RPP (sample, bukan bagian repo)
+/rpp.pdf
+
 # Contoh env produksi (aman, tanpa secret asli) — boleh di-commit
 !.env.production.example

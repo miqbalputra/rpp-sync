@@ -1,19 +1,29 @@
-// Dashboard Admin (PRD Tahap 10) — ringkasan jumlah.
+// Dashboard Admin (PRD Tahap 10) — kartu manajemen + statistik sekolah
+// (komponen bersama SchoolStatsDashboard, dipakai juga Kepala/PJ).
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Users, BookOpen, School, Trash2, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { SchoolStatsDashboard } from "@/components/dashboard/SchoolStatsDashboard";
 
 export const metadata = { title: "Dashboard Admin — Sinkronisasi RPP" };
 
 export default async function AdminHomePage() {
-  const [userCount, mapelCount, kelasCount, rppTerhapus] = await Promise.all([
-    prisma.user.count(),
-    prisma.mapel.count(),
-    prisma.kelas.count(),
+  const [userCount, mapelCount, kelasCount, trashUser, trashMapel, trashKelas, trashPenugasan, trashJadwal, trashRpp, rppAktif] = await Promise.all([
+    prisma.user.count({ where: { deletedAt: null } }),
+    prisma.mapel.count({ where: { deletedAt: null } }),
+    prisma.kelas.count({ where: { deletedAt: null } }),
+    prisma.user.count({ where: { deletedAt: { not: null } } }),
+    prisma.mapel.count({ where: { deletedAt: { not: null } } }),
+    prisma.kelas.count({ where: { deletedAt: { not: null } } }),
+    prisma.penugasan.count({ where: { deletedAt: { not: null } } }),
+    prisma.jadwal.count({ where: { deletedAt: { not: null } } }),
     prisma.rpp.count({ where: { deletedAt: { not: null } } }),
+    prisma.rpp.count({ where: { deletedAt: null } }),
   ]);
+
+  const totalTrash = trashUser + trashMapel + trashKelas + trashPenugasan + trashJadwal + trashRpp;
 
   const stats: {
     label: string;
@@ -25,14 +35,16 @@ export default async function AdminHomePage() {
     { label: "User", value: userCount, href: "/admin/users", icon: Users, iconWrap: "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400" },
     { label: "Mata Pelajaran", value: mapelCount, href: "/admin/mapel", icon: BookOpen, iconWrap: "bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-400" },
     { label: "Kelas", value: kelasCount, href: "/admin/kelas", icon: School, iconWrap: "bg-warning-50 text-warning-600 dark:bg-warning-500/15 dark:text-warning-400" },
-    { label: "RPP di Sampah", value: rppTerhapus, href: "/admin/recycle-bin", icon: Trash2, iconWrap: "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-400" },
+    { label: "Item di Sampah", value: totalTrash, href: "/admin/recycle-bin", icon: Trash2, iconWrap: "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-400" },
   ];
 
   return (
     <div>
       <div className="mb-6 space-y-1">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard Admin</h1>
-        <p className="text-sm text-muted-foreground">Ringkasan data sistem.</p>
+        <p className="text-sm text-muted-foreground">
+          Ringkasan data sistem · {rppAktif} RPP aktif
+        </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -53,6 +65,10 @@ export default async function AdminHomePage() {
             </Link>
           );
         })}
+      </div>
+
+      <div className="mt-6">
+        <SchoolStatsDashboard linkable showOverviewCards={false} />
       </div>
     </div>
   );

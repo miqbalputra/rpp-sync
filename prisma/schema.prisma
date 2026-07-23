@@ -80,6 +80,8 @@ model User {
   aktif        Boolean  @default(true)
   // Preferensi: terima pengingat RPP yang melewati jam mengajar (overdue)
   prefNotifOverdue Boolean @default(true)
+  // Soft-delete: null = aktif; diisi timestamp saat dihapus → masuk Sampah.
+  deletedAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -102,6 +104,8 @@ model Guru {
   id         String @id @default(cuid())
   userId     String @unique
   namaTampil String
+  // Soft-delete: diisi saat User terhapus (dihapuskan bersama profil guru).
+  deletedAt  DateTime?
 
   user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   mapel      GuruMapel[]
@@ -114,6 +118,8 @@ model Guru {
 model Mapel {
   id        String @id @default(cuid())
   namaMapel String @unique
+  // Soft-delete: null = aktif; diisi timestamp saat dihapus → masuk Sampah.
+  deletedAt DateTime?
 
   guruMapel GuruMapel[]
   penugasan Penugasan[]
@@ -128,6 +134,8 @@ model Kelas {
   semester   String
   gender     Gender
   tahunAjaran String
+  // Soft-delete: null = aktif; diisi timestamp saat dihapus → masuk Sampah.
+  deletedAt  DateTime?
 
   penugasan Penugasan[]
   rpp       Rpp[]
@@ -159,6 +167,8 @@ model Penugasan {
   kelas   Kelas @relation(fields: [kelasId], references: [id], onDelete: Restrict)
 
   jadwal  Jadwal[]
+  // Soft-delete: null = aktif; diisi timestamp saat dihapus → masuk Sampah.
+  deletedAt DateTime?
 
   @@unique([guruId, mapelId, kelasId])
   @@map("penugasan")
@@ -198,10 +208,11 @@ model Rpp {
 }
 
 model RppPertemuan {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   rppId       String
   urutan      Int
   isiKegiatan String
+  tanggal     DateTime? // Tanggal KBM (kegiatan belajar mengajar) per pertemuan; opsional.
 
   rpp         Rpp     @relation(fields: [rppId], references: [id], onDelete: Cascade)
 
@@ -258,6 +269,8 @@ model Jadwal {
   hari        Hari
   jamMulai    String   // "HH:mm"
   jamSelesai  String   // "HH:mm"
+  // Soft-delete: null = aktif; diisi timestamp saat dihapus → masuk Sampah.
+  deletedAt   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

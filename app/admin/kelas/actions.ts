@@ -47,12 +47,12 @@ export async function updateKelas(id: string, formData: FormData) {
 
 export async function deleteKelas(id: string) {
   await requireAdmin();
-  try {
-    await prisma.kelas.delete({ where: { id } });
-  } catch (e: any) {
-    redirect(`/admin/kelas?error=${encodeURIComponent("Kelas tidak bisa dihapus karena masih dipakai penugasan atau RPP.")}`);
-  }
+  // Soft-delete: pindahkan ke Sampah, bukan hapus permanen. Baris tetap ada
+  // (referensi penugasan/RPP tetap utuh); penugasan & jadwal terkait disembunyikan
+  // lewat filter relasi (kelas.deletedAt = null). Bisa dipulihkan dari Sampah.
+  await prisma.kelas.update({ where: { id }, data: { deletedAt: new Date() } });
   revalidatePath("/admin/kelas");
   revalidatePath("/admin");
+  revalidatePath("/admin/recycle-bin");
   redirect("/admin/kelas");
 }

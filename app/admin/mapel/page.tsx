@@ -17,8 +17,16 @@ export default async function MapelPage({
 }) {
   const { error } = await searchParams;
   const mapel = await prisma.mapel.findMany({
+    where: { deletedAt: null },
     orderBy: { namaMapel: "asc" },
-    include: { _count: { select: { penugasan: true, rpp: true } } },
+    include: {
+      _count: {
+        select: {
+          penugasan: { where: { deletedAt: null } },
+          rpp: { where: { deletedAt: null } },
+        },
+      },
+    },
   });
 
   return (
@@ -52,7 +60,7 @@ export default async function MapelPage({
                     <a href={`/admin/mapel/${m.id}/edit`} className="text-primary text-sm font-medium hover:underline">Edit</a>
                     <DeleteButton
                       action={deleteMapel.bind(null, m.id)}
-                      confirmMessage={`Hapus mapel "${m.namaMapel}"?`}
+                      confirmMessage={`Hapus mapel "${m.namaMapel}"? Dipindahkan ke Sampah; ${m._count.penugasan} penugasan & ${m._count.rpp} RPP terkait disembunyikan. Bisa dipulihkan.`}
                     />
                   </TableCell>
                 </TableRow>

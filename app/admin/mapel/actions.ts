@@ -48,14 +48,12 @@ export async function updateMapel(id: string, formData: FormData) {
 
 export async function deleteMapel(id: string) {
   await requireAdmin();
-  // Hindari hapus mapel yang masih dipakai penugasan/RPP (onDelete: Restrict).
-  try {
-    await prisma.mapel.delete({ where: { id } });
-  } catch (e: any) {
-    // Jika dipakai, beri pesan via redirect.
-    redirect(`/admin/mapel?error=${encodeURIComponent("Mapel tidak bisa dihapus karena masih dipakai penugasan atau RPP.")}`);
-  }
+  // Soft-delete: pindahkan ke Sampah, bukan hapus permanen. Baris tetap ada
+  // (referensi penugasan/RPP tetap utuh); penugasan & jadwal terkait disembunyikan
+  // lewat filter relasi (mapel.deletedAt = null). Bisa dipulihkan dari Sampah.
+  await prisma.mapel.update({ where: { id }, data: { deletedAt: new Date() } });
   revalidatePath("/admin/mapel");
   revalidatePath("/admin");
+  revalidatePath("/admin/recycle-bin");
   redirect("/admin/mapel");
 }

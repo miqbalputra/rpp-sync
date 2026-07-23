@@ -18,7 +18,7 @@ export type RppViewData = {
   namaUstadz: string;
   namaKepalaSekolah: string | null;
   tempat?: string;
-  pertemuan: { urutan: number; isiKegiatan: string }[];
+  pertemuan: { urutan: number; isiKegiatan: string; tanggal?: string | Date | null }[];
   penilaian: { pengetahuan: string; keterampilan: string; sikap: string } | null;
 };
 

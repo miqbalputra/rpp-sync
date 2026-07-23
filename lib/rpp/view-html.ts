@@ -49,7 +49,7 @@ export function rppBodyHtml(data: RppViewData): string {
   const kelasSemester = `${esc(data.kelasNama)}${data.semester ? " / " + esc(data.semester) : ""}`;
 
   // Pertemuan disusun 2 per baris (meniru layout rpp.pdf: Pertemuan 1|2, 3|4, ...).
-  const rows: { urutan: number; isiKegiatan: string }[][] = [];
+  const rows: { urutan: number; isiKegiatan: string; tanggal?: string | Date | null }[][] = [];
   for (let i = 0; i < data.pertemuan.length; i += 2) {
     rows.push(data.pertemuan.slice(i, i + 2));
   }
@@ -96,6 +96,7 @@ export function rppBodyHtml(data: RppViewData): string {
         .map(
           (p) => `<td style="${CELL}width:50%;">
             <div style="font-weight:600;color:${C.labelText};margin-bottom:4px;">Pertemuan ${p.urutan}</div>
+            ${p.tanggal ? `<div style="font-size:12px;color:${C.muted};margin-bottom:4px;">Tanggal KBM: ${esc(fmtTanggal(p.tanggal))}</div>` : ""}
             <div style="white-space:pre-wrap;">${esc(p.isiKegiatan)}</div>
           </td>`
         )

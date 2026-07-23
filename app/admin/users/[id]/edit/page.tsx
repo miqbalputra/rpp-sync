@@ -16,7 +16,7 @@ export default async function EditUserPage({
 }) {
   const { id } = await params;
   const { error } = await searchParams;
-  const user = await prisma.user.findUnique({ where: { id } });
+  const user = await prisma.user.findFirst({ where: { id, deletedAt: null } });
   if (!user) notFound();
 
   return (

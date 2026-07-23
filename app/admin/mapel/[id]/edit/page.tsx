@@ -15,7 +15,7 @@ export default async function EditMapelPage({
 }) {
   const { id } = await params;
   const { error } = await searchParams;
-  const mapel = await prisma.mapel.findUnique({ where: { id } });
+  const mapel = await prisma.mapel.findFirst({ where: { id, deletedAt: null } });
   if (!mapel) notFound();
 
   return (

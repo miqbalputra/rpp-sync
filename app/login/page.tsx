@@ -7,6 +7,22 @@ import { LoginCard } from "./_LoginCard";
 
 export const metadata = { title: "Login — Sinkronisasi RPP" };
 
+// Peta error NextAuth → pesan ramah pengguna. Error dari server action
+// (credentials) berupa teks bebas; error OAuth berupa kode (AccessDenied, dll).
+function decodeOAuthError(raw: string): string {
+  switch (raw) {
+    case "AccessDenied":
+    case "OAuthCallback":
+      return "Akun Google belum terdaftar atau tidak aktif. Hubungi Admin untuk mendaftarkan email Anda.";
+    case "Configuration":
+      return "Konfigurasi login Google belum siap. Hubungi Admin.";
+    case "OAuthAccountNotLinked":
+      return "Email ini sudah dipakai metode login lain. Gunakan cara login yang sama.";
+    default:
+      return raw;
+  }
+}
+
 export default async function LoginPage({
   searchParams,
 }: {
@@ -16,12 +32,12 @@ export default async function LoginPage({
 
   async function loginAction(formData: FormData) {
     "use server";
-    const email = String(formData.get("email") ?? "");
+    const identifier = String(formData.get("identifier") ?? "");
     const password = String(formData.get("password") ?? "");
     const callbackUrl = String(formData.get("callbackUrl") ?? "/");
     try {
-      // redirectTo "/" — proxy akan arahkan ke dashboard sesuai role.
-      await signIn("credentials", { email, password, redirectTo: callbackUrl });
+      // redirectTo callbackUrl — proxy akan arahkan ke dashboard sesuai role.
+      await signIn("credentials", { identifier, password, redirectTo: callbackUrl });
     } catch (error) {
       if (error instanceof AuthError) {
         const msg =
@@ -34,7 +50,9 @@ export default async function LoginPage({
     }
   }
 
-  const errMsg = params.error ? decodeURIComponent(params.error) : null;
+  // Next.js sudah URL-decode searchParams; jangan decode ulang (double-decode
+  // bisa melempar URIError untuk nilai %25xxx yang tidak valid → 500 halaman).
+  const errMsg = params.error ? decodeOAuthError(params.error) : null;
 
   return (
     <main className="min-h-screen grid lg:grid-cols-2 bg-background">

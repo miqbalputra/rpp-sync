@@ -4,6 +4,7 @@ import { Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { GoogleButton } from "./_GoogleButton";
 
 export function LoginCard({
   action,
@@ -18,6 +19,20 @@ export function LoginCard({
   const [pending, startTransition] = useTransition();
 
   return (
+    <div className="space-y-5">
+      <GoogleButton callbackUrl={callbackUrl} />
+
+      <div className="relative py-1">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-gray-200 dark:border-gray-800" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-white px-2 text-gray-400 dark:bg-gray-900 dark:text-gray-500">
+            atau
+          </span>
+        </div>
+      </div>
+
     <form
       action={action}
       className="space-y-5"
@@ -39,15 +54,15 @@ export function LoginCard({
       <input type="hidden" name="callbackUrl" value={callbackUrl} />
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="identifier">Username atau Email</Label>
         <Input
-          id="email"
-          name="email"
-          type="email"
+          id="identifier"
+          name="identifier"
+          type="text"
           required
-          autoComplete="email"
+          autoComplete="username"
           autoFocus
-          placeholder="admin@gqtunasilmu.sch.id"
+          placeholder="username atau email@sekolah.sch.id"
         />
       </div>
 
@@ -90,9 +105,10 @@ export function LoginCard({
       </Button>
 
       <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-        Akun demo Admin — <span className="font-mono">admin@gqtunasilmu.sch.id</span> /{" "}
+        Akun demo Admin — <span className="font-mono">admin</span> /{" "}
         <span className="font-mono">admin123</span>
       </p>
     </form>
+    </div>
   );
 }
