@@ -4,6 +4,7 @@
 // server→client sebagai prop (error serialisasi RSC).
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import {
   LayoutDashboard, Users, BookOpen, School, Link2, Trash2,
   FileText, Search, CalendarClock, Sparkles, type LucideIcon,
@@ -58,7 +59,13 @@ export function Sidebar({
 }) {
   const nav = NAVS[variant];
   const pathname = usePathname();
-  const { isExpanded, isHovered, isMobile, isMobileOpen, setIsHovered } = useSidebar();
+  const { isExpanded, isHovered, isMobile, isMobileOpen, setIsHovered, setIsMobileOpen } = useSidebar();
+
+  // Mobile: tutup drawer otomatis setelah navigasi (pilih menu) supaya konten
+  // terlihat, bukan menu tetap terbuka menutupi halaman. Berlaku untuk semua role.
+  useEffect(() => {
+    if (isMobile) setIsMobileOpen(false);
+  }, [pathname, isMobile, setIsMobileOpen]);
 
   const active = (href: string) =>
     ROOTS.includes(href) ? pathname === href : pathname.startsWith(href);
@@ -108,6 +115,7 @@ export function Sidebar({
               <Link
                 key={n.href}
                 href={n.href}
+                onClick={() => isMobile && setIsMobileOpen(false)}
                 aria-current={isActive ? "page" : undefined}
                 title={!showLabel ? n.label : undefined}
                 className={cn(
