@@ -103,11 +103,6 @@ export function LoginCard({
           </>
         )}
       </Button>
-
-      <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-        Akun demo Admin — <span className="font-mono">admin</span> /{" "}
-        <span className="font-mono">admin123</span>
-      </p>
     </form>
     </div>
   );
