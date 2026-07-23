@@ -27,7 +27,12 @@ async function main() {
   const adminPassword = await bcrypt.hash(rawPassword, 10);
   const admin = await prisma.user.upsert({
     where: { email: "admin@gqtunasilmu.sch.id" },
-    update: {},
+    // Reset password admin ke ADMIN_PASSWORD setiap deploy. Sebelumnya `update: {}`
+    // membekukan password dari deploy pertama — mengganti ADMIN_PASSWORD di env lalu
+    // redeploy TIDAK mengubah password admin yang sudah ada → terkunci. Dengan ini,
+    // ADMIN_PASSWORD jadi source of truth: ubah di Coolify, redeploy, login pakai nilai
+    // itu. Catatan: redeploy akan menimpa password yg admin ubah lewat UI Pengaturan.
+    update: { passwordHash: adminPassword },
     create: {
       nama: "Administrator",
       email: "admin@gqtunasilmu.sch.id",
@@ -37,7 +42,7 @@ async function main() {
       aktif: true,
     },
   });
-  console.log(`✔ Admin: ${admin.email} (username: admin, password: ${isProd ? "(dari env ADMIN_PASSWORD)" : "admin123"})`);
+  console.log(`✔ Admin: ${admin.email} (username: admin, password: ${isProd ? "(dari env ADMIN_PASSWORD — direset tiap deploy)" : "admin123"})`);
 
   // Data contoh hanya di dev, atau di prod bila SEED_DEMO=true.
   if (!isProd || seedDemo) {
