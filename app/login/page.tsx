@@ -1,5 +1,6 @@
 // Halaman login (PRD Tahap 2). Server action memanggil signIn NextAuth v5.
-import { signIn } from "@/lib/auth";
+import { signIn, redirectPathForRole } from "@/lib/auth";
+import { findActiveUserByIdentifier } from "@/lib/user";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { BookOpenText } from "lucide-react";
@@ -36,8 +37,17 @@ export default async function LoginPage({
     const password = String(formData.get("password") ?? "");
     const callbackUrl = String(formData.get("callbackUrl") ?? "/");
     try {
-      // redirectTo callbackUrl — proxy akan arahkan ke dashboard sesuai role.
-      await signIn("credentials", { identifier, password, redirectTo: callbackUrl });
+      // redirect:false → signIn MENETAPKAN cookie sesi ke response tapi TIDAK
+      // melempar redirect. Supaya kita bisa arahkan LANGSUNG ke dashboard sesuai
+      // role (tanpa hop lewat "/"). Ini lebih andal di balik reverse proxy
+      // (Coolify/Traefik): tidak bergantung pada proxy membaca cookie yg baru
+      // ditulis pada request berikutnya.
+      await signIn("credentials", {
+        identifier,
+        password,
+        redirectTo: callbackUrl,
+        redirect: false,
+      });
     } catch (error) {
       if (error instanceof AuthError) {
         const msg =
@@ -48,6 +58,20 @@ export default async function LoginPage({
       }
       throw error;
     }
+
+    // Login berhasil. Ambil role dari DB — BUKAN dari cookie, karena cookie
+    // baru ditulis ke response dan auth() membaca header Cookie dari request
+    // ini (yg belum memuatnya). Lalu arahkan langsung ke dashboard role. Jika
+    // ada callbackUrl spesifik (pengguna diusir dari halaman terproteksi),
+    // kembalikan ke sana; proxy akan validasi akses rolenya.
+    let dest: string;
+    if (callbackUrl && callbackUrl !== "/" && callbackUrl !== "/login") {
+      dest = callbackUrl;
+    } else {
+      const user = await findActiveUserByIdentifier(identifier);
+      dest = redirectPathForRole(user?.role);
+    }
+    redirect(dest);
   }
 
   // Next.js sudah URL-decode searchParams; jangan decode ulang (double-decode
