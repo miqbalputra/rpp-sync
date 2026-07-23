@@ -15,6 +15,10 @@ const GOOGLE_ALLOWED_DOMAINS = (process.env.GOOGLE_ALLOWED_DOMAINS ?? "")
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
+  // Deploy di balik reverse proxy (Coolify/Traefik). Auth.js v5 default hanya
+  // percaya localhost; tanpa ini login gagal dengan "UntrustedHost". trustHost
+  // membuatnya mempercayai Host/X-Forwarded-Host dari domain publik kita.
+  trustHost: true,
   pages: {
     signIn: "/login",
   },
