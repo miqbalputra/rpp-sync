@@ -15,7 +15,7 @@ const GENDERS = ["IKHWAN", "AKHWAT"] as const;
 
 const UserCreateSchema = z.object({
   nama: z.string().min(1, "Nama wajib diisi").max(100),
-  email: z.string().email("Email tidak valid"),
+  email: z.string().email("Email tidak valid").optional(), // opsional; guru bisa isi via Akun
   username: z.string().min(3, "Username minimal 3 karakter").max(50),
   password: z.string().min(6, "Password minimal 6 karakter"),
   role: z.enum(ROLES, { message: "Role tidak valid" }),
@@ -25,7 +25,7 @@ const UserCreateSchema = z.object({
 
 const UserUpdateSchema = z.object({
   nama: z.string().min(1, "Nama wajib diisi").max(100),
-  email: z.string().email("Email tidak valid"),
+  email: z.string().email("Email tidak valid").optional(), // opsional; guru bisa isi via Akun
   username: z.string().min(3, "Username minimal 3 karakter").max(50),
   password: z.string().optional(), // kosong = tidak ganti
   role: z.enum(ROLES, { message: "Role tidak valid" }),
@@ -37,7 +37,7 @@ export async function createUser(formData: FormData) {
   await requireAdmin();
   const parsed = UserCreateSchema.safeParse({
     nama: formData.get("nama"),
-    email: String(formData.get("email") ?? "").toLowerCase(),
+    email: String(formData.get("email") ?? "").toLowerCase() || undefined,
     username: String(formData.get("username") ?? "").toLowerCase(),
     password: formData.get("password"),
     role: formData.get("role"),
@@ -54,7 +54,7 @@ export async function createUser(formData: FormData) {
     const user = await prisma.user.create({
       data: {
         nama: data.nama.trim(),
-        email: data.email,
+        email: data.email ?? null, // email opsional
         username: data.username.trim(),
         passwordHash, // username sudah di-lowercase saat parse
         role: data.role,
@@ -78,7 +78,7 @@ export async function updateUser(id: string, formData: FormData) {
   await requireAdmin();
   const parsed = UserUpdateSchema.safeParse({
     nama: formData.get("nama"),
-    email: String(formData.get("email") ?? "").toLowerCase(),
+    email: String(formData.get("email") ?? "").toLowerCase() || undefined,
     username: String(formData.get("username") ?? "").toLowerCase(),
     password: formData.get("password") || undefined,
     role: formData.get("role"),
@@ -91,7 +91,7 @@ export async function updateUser(id: string, formData: FormData) {
   const data = parsed.data;
   const update: any = {
     nama: data.nama.trim(),
-    email: data.email,
+    email: data.email ?? null, // email opsional: bisa dikosongkan saat edit
     username: data.username.trim(), // username sudah di-lowercase saat parse
     role: data.role,
     gender: (data.gender as Gender) ?? null,
@@ -175,9 +175,12 @@ export async function importGuru(formData: FormData): Promise<ImportGuruResult> 
     errors.push({ row: 0, message: `Baris melebihi batas ${MAX_ROWS}; hanya ${MAX_ROWS} baris pertama diproses` });
   }
 
-  // Cek unik: muat semua email + username existing sekali jalan.
+  // Cek unik: muat semua email + username existing sekali jalan. Email null
+  // (belum diisi) diabaikan — boleh banyak user tanpa email.
   const existing = await prisma.user.findMany({ select: { email: true, username: true } });
-  const emailDb = new Set(existing.map((u) => u.email.toLowerCase()));
+  const emailDb = new Set(
+    existing.map((u) => u.email?.toLowerCase()).filter((e): e is string => !!e),
+  );
   const usernameDb = new Set(existing.map((u) => u.username.toLowerCase()));
   const emailInFile = new Set<string>();
   const usernameInFile = new Set<string>();
@@ -187,13 +190,20 @@ export async function importGuru(formData: FormData): Promise<ImportGuruResult> 
   const rowErrors: { row: number; message: string }[] = [...errors];
 
   for (const r of processRows) {
-    const emailLow = r.email.toLowerCase();
+    // r.email sudah di-lowercase di parser; null = belum punya email.
+    const emailLow = r.email;
     const userLow = r.username.toLowerCase();
 
-    // Duplikat di DB atau di file ini → skip (bukan error)
-    if (emailDb.has(emailLow) || emailInFile.has(emailLow) || usernameDb.has(userLow) || usernameInFile.has(userLow)) {
+    // Duplikat di DB atau di file ini → skip (bukan error). Email null tidak
+    // pernah dianggap duplikat (boleh banyak user tanpa email).
+    const emailDup =
+      emailLow != null && (emailDb.has(emailLow) || emailInFile.has(emailLow));
+    if (emailDup || usernameDb.has(userLow) || usernameInFile.has(userLow)) {
       skipped++;
-      rowErrors.push({ row: r.rowNumber, message: "Dilewati: email/username sudah ada" });
+      rowErrors.push({
+        row: r.rowNumber,
+        message: emailDup ? "Dilewati: email sudah ada" : "Dilewati: username sudah ada",
+      });
       continue;
     }
 
@@ -202,7 +212,7 @@ export async function importGuru(formData: FormData): Promise<ImportGuruResult> 
       const user = await prisma.user.create({
         data: {
           nama: r.nama,
-          email: emailLow,
+          email: emailLow, // null boleh (kolom opsional)
           username: userLow, // simpan lowercase agar login case-insensitive
           passwordHash,
           role: Role.GURU,
@@ -211,10 +221,12 @@ export async function importGuru(formData: FormData): Promise<ImportGuruResult> 
         },
       });
       await ensureGuruProfile(user.id, user.nama, user.role);
-      emailDb.add(emailLow);
       usernameDb.add(userLow);
-      emailInFile.add(emailLow);
       usernameInFile.add(userLow);
+      if (emailLow != null) {
+        emailDb.add(emailLow);
+        emailInFile.add(emailLow);
+      }
       created++;
     } catch (e: any) {
       rowErrors.push({ row: r.rowNumber, message: e?.code === "P2002" ? "Email/username sudah dipakai" : "Gagal menyimpan" });

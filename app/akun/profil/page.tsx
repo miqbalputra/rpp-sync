@@ -67,8 +67,10 @@ export default async function ProfilPage({
                 <input id="username" name="username" required defaultValue={user.username} className={inputClass} />
               </div>
               <div className="sm:col-span-2">
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <input id="email" name="email" type="email" required defaultValue={user.email} className={inputClass} />
+                <FieldLabel htmlFor="email">
+                  Email <span className="text-gray-400 font-normal dark:text-gray-500">(opsional)</span>
+                </FieldLabel>
+                <input id="email" name="email" type="email" defaultValue={user.email ?? ""} className={inputClass} placeholder="isi email Anda untuk bisa login dengan Google" />
               </div>
               <div>
                 <FieldLabel htmlFor="gender">Gender</FieldLabel>

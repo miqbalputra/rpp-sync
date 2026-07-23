@@ -13,7 +13,7 @@ const GENDERS = ["IKHWAN", "AKHWAT"] as const;
 
 const ProfilSchema = z.object({
   nama: z.string().min(1, "Nama wajib diisi").max(100),
-  email: z.string().email("Email tidak valid"),
+  email: z.string().email("Email tidak valid").optional(), // opsional; guru bisa mengisi sendiri
   username: z.string().min(3, "Username minimal 3 karakter").max(50),
   gender: z.enum(GENDERS, { message: "Gender tidak valid" }).optional(),
 });
@@ -33,7 +33,7 @@ export async function updateProfil(formData: FormData) {
   const session = await requireUser();
   const parsed = ProfilSchema.safeParse({
     nama: formData.get("nama"),
-    email: String(formData.get("email") ?? "").toLowerCase(),
+    email: String(formData.get("email") ?? "").toLowerCase() || undefined,
     username: formData.get("username"),
     gender: formData.get("gender") || undefined,
   });
@@ -46,7 +46,7 @@ export async function updateProfil(formData: FormData) {
       where: { id: session.user.id },
       data: {
         nama: d.nama.trim(),
-        email: d.email,
+        email: d.email ?? null, // email opsional: bisa dikosongkan atau diisi guru
         username: d.username.trim(),
         gender: (d.gender as Gender) ?? null,
       },

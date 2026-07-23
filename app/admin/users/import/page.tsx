@@ -40,9 +40,12 @@ export default async function ImportGuruPage() {
             <span className="font-mono"> .xlsx</span> sudah jadi (ada sheet <span className="font-mono">Guru</span> + <span className="font-mono">Petunjuk</span>).
           </p>
           <p className="mt-2">
-            Kolom: <span className="font-mono">Nama*, Username*, Email*, Password*, Gender, Aktif</span>. Baris dengan
-            email/username sudah ada akan <span className="font-medium">dilewati</span>; baris tidak valid dicatat sebagai
+            Kolom: <span className="font-mono">Nama*, Username*, Password*, Gender, Aktif</span> + <span className="font-mono">Email</span> (opsional). Baris dengan
+            username (atau email bila diisi) sudah ada akan <span className="font-medium">dilewati</span>; baris tidak valid dicatat sebagai
             error tanpa membatalkan import lain. Maks. 500 baris / 2 MB.
+          </p>
+          <p className="mt-2">
+            Email boleh dikosongkan — guru login pakai username+password dulu, lalu mengisi email sendiri lewat menu <span className="font-medium text-foreground">Akun</span> (berguna untuk login Google).
           </p>
         </div>
 

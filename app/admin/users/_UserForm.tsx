@@ -10,7 +10,7 @@ export default function UserForm({
   action: (formData: FormData) => Promise<void>;
   defaultValues?: {
     nama?: string;
-    email?: string;
+    email?: string | null;
     username?: string;
     role?: Role;
     gender?: Gender | null;
@@ -30,8 +30,10 @@ export default function UserForm({
           <input id="username" name="username" required defaultValue={defaultValues?.username} className={inputClass} />
         </div>
         <div className="md:col-span-2">
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <input id="email" name="email" type="email" required defaultValue={defaultValues?.email} className={inputClass} />
+          <FieldLabel htmlFor="email">
+            Email <span className="text-gray-400 font-normal dark:text-gray-500">(opsional)</span>
+          </FieldLabel>
+          <input id="email" name="email" type="email" defaultValue={defaultValues?.email ?? ""} className={inputClass} placeholder="boleh dikosongkan; guru bisa isi sendiri via Akun" />
         </div>
         <div>
           <FieldLabel htmlFor="password">

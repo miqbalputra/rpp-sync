@@ -13,7 +13,7 @@ const GENDERS = ["IKHWAN", "AKHWAT"] as const;
 export type GuruExportRow = {
   nama: string;
   username: string;
-  email: string;
+  email: string | null;
   gender: string | null;
   aktif: boolean;
 };
@@ -22,7 +22,7 @@ export type GuruImportRow = {
   rowNumber: number; // baris di file Excel (mulai 2; 1 = header)
   nama: string;
   username: string;
-  email: string; // lowercased
+  email: string | null; // lowercased; null = belum punya email (diisi guru via Akun)
   password: string;
   gender: "IKHWAN" | "AKHWAT" | null;
   aktif: boolean;
@@ -35,7 +35,7 @@ export type ImportParseResult = { rows: GuruImportRow[]; errors: ImportError[] }
 const GuruRowSchema = z.object({
   nama: z.string().min(1, "Nama wajib diisi").max(100),
   username: z.string().min(3, "Username minimal 3 karakter").max(50),
-  email: z.string().email("Email tidak valid"),
+  email: z.string().email("Email tidak valid").nullable(), // null = opsional, diisi guru nanti
   password: z.string().min(6, "Password minimal 6 karakter"),
   gender: z.enum(GENDERS, { message: "Gender harus IKHWAN atau AKHWAT" }).nullable(),
   aktif: z.boolean(),
@@ -95,8 +95,9 @@ export async function buildGuruTemplateWorkbook(): Promise<Buffer> {
   ws.getRow(1).font = { bold: true };
   ws.getRow(1).alignment = { horizontal: "center" };
 
-  // Baris contoh (baris 2) — boleh dihapus sebelum import
-  ws.addRow(["Ustadz Contoh", "ustadzcontoh", "contoh@gqtunasilmu.sch.id", "rahasia123", "IKHWAN", "TRUE"]);
+  // Baris contoh (baris 2) — boleh dihapus sebelum import. Email sengaja dikosongkan
+  // untuk menunjukkan bahwa email opsional (diisi guru sendiri via menu Akun nanti).
+  ws.addRow(["Ustadz Contoh", "ustadzcontoh", "", "rahasia123", "IKHWAN", "TRUE"]);
 
   // Sheet petunjuk
   const help = wb.addWorksheet("Petunjuk");
@@ -106,17 +107,18 @@ export async function buildGuruTemplateWorkbook(): Promise<Buffer> {
   const lines = [
     "",
     "Isi sheet 'Guru' mulai baris 2. Baris 1 = header (jangan diubah).",
-    "Kolom bertanda * wajib: Nama, Username, Email, Password.",
-    "Username minimal 3 karakter & unik. Email valid & unik (lowercase otomatis).",
+    "Kolom wajib: Nama, Username, Password. Email OPSIONAL (boleh kosong).",
+    "Username minimal 3 karakter & unik. Email (jika diisi) valid & unik, lowercase otomatis.",
+    "Email kosong = guru login pakai username+password dulu; email bisa diisi sendiri lewat menu Akun.",
     "Password minimal 6 karakter. Password disimpan ter-hash; sarankan ganti via menu Akun setelah login.",
     "Gender: IKHWAN atau AKHWAT (kosong = tidak diset).",
     "Aktif: TRUE/FALSE (kosong = TRUE).",
-    "Baris yang sudah ada email/username di database akan dilewati (skipped), bukan error.",
+    "Baris yang sudah ada username (atau email bila diisi) di database akan dilewati (skipped), bukan error.",
     "Baris dengan data tidak valid dicatat sebagai error (baris + alasan) tanpa membatalkan import lain.",
     "Maksimum 500 baris per file. Format file: .xlsx.",
     "",
-    "Contoh:",
-    "Ustadz Contoh | ustadzcontoh | contoh@gqtunasilmu.sch.id | rahasia123 | IKHWAN | TRUE",
+    "Contoh (Email dikosongkan):",
+    "Ustadz Contoh | ustadzcontoh |  | rahasia123 | IKHWAN | TRUE",
   ];
   lines.forEach((l) => help.addRow([l]));
 
@@ -144,7 +146,7 @@ export async function buildGuruExportWorkbook(rows: GuruExportRow[]): Promise<Bu
     ws.addRow([
       r.nama,
       r.username,
-      r.email,
+      r.email ?? "",
       r.gender ?? "",
       r.aktif ? "Aktif" : "Nonaktif",
     ]);
@@ -184,7 +186,9 @@ export async function parseGuruImportWorkbook(buffer: Buffer): Promise<ImportPar
 
     const nama = normText(cells[0]);
     const username = normText(cells[1]);
-    const email = normText(cells[2]).toLowerCase();
+    // Email opsional: cell kosong → null (diisi guru sendiri via Akun nanti).
+    const emailRaw = normText(cells[2]).toLowerCase();
+    const email = emailRaw === "" ? null : emailRaw;
     const password = normText(cells[3]);
     const gender = parseGender(cells[4]);
     const aktif = parseAktif(cells[5]);

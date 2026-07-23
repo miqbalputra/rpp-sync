@@ -91,7 +91,7 @@ export default async function UsersPage({
                   <TableCell className="font-medium text-foreground">{u.nama}</TableCell>
                   <TableCell>
                     <div className="font-mono text-xs text-foreground">{u.username}</div>
-                    <div className="text-xs text-muted-foreground">{u.email}</div>
+                    <div className="text-xs text-muted-foreground">{u.email || "—"}</div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={ROLE_VARIANT[u.role]}>{ROLE_LABEL[u.role]}</Badge>

@@ -71,7 +71,7 @@ enum NotifikasiAudience {
 model User {
   id           String   @id @default(cuid())
   nama         String
-  email        String   @unique
+  email        String?  @unique
   username     String   @unique
   passwordHash String
   role         Role     @default(GURU)

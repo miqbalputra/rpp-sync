@@ -154,7 +154,7 @@ export default async function RecycleBinPage({
                       <TableCell className="font-medium text-foreground">{u.nama}</TableCell>
                       <TableCell>
                         <div className="font-mono text-xs text-foreground">{u.username}</div>
-                        <div className="text-xs text-muted-foreground">{u.email}</div>
+                        <div className="text-xs text-muted-foreground">{u.email || "—"}</div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{ROLE_LABEL[u.role]}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">{tanggalCell(u.deletedAt)}</TableCell>
