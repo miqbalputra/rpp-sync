@@ -11,7 +11,7 @@ export const RppFormSchema = z.object({
   mapelId: z.string().min(1, "Mata pelajaran wajib dipilih"),
   kelasId: z.string().min(1, "Kelas wajib dipilih"),
   noRpp: z.string().max(50, "No. RPP maksimal 50 karakter").optional(),
-  materi: z.string().min(1, "Materi wajib diisi").max(200),
+  materi: z.string().min(1, "Materi wajib diisi"),
   alokasiWaktu: z.string().min(1, "Alokasi waktu wajib diisi").max(100),
   tujuanPembelajaran: z.string().min(1, "Tujuan pembelajaran wajib diisi"),
   tanggalPengesahan: z.string().min(1, "Tanggal pengesahan wajib diisi"), // ISO date string (yyyy-mm-dd)
@@ -28,7 +28,7 @@ export type RppActionResult = { ok: true; id?: string } | { ok: false; error: st
 
 // ----- Draft dari AI (subset konten RPP; tanpa mapel/kelas/noRpp/tanggal) -----
 export const AiDraftSchema = z.object({
-  materi: z.string().min(1, "Materi wajib diisi").max(200),
+  materi: z.string().min(1, "Materi wajib diisi"),
   alokasiWaktu: z.string().min(1, "Alokasi waktu wajib diisi").max(100),
   tujuanPembelajaran: z.string().min(1, "Tujuan pembelajaran wajib diisi"),
   pertemuan: z.array(z.object({ isiKegiatan: z.string().min(1) })).min(1, "Minimal 1 pertemuan"),

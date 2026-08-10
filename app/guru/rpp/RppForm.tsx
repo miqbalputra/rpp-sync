@@ -7,6 +7,7 @@ import { RppFormSchema, RppFormValues, RppActionResult } from "@/lib/rpp/schema"
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { AutoNumberTextarea } from "./AutoNumberTextarea";
 
 type KelasOpt = { id: string; namaKelas: string; gender: string };
 
@@ -72,8 +73,8 @@ export default function RppForm({
       }
       router.push("/guru/rpp");
       router.refresh();
-    } catch (e: any) {
-      setServerError(e?.message ?? "Terjadi kesalahan");
+    } catch (e: unknown) {
+      setServerError(e instanceof Error ? e.message : "Terjadi kesalahan");
       setSubmitting(false);
     }
   });
@@ -136,9 +137,15 @@ export default function RppForm({
             </select>
             {errors.kelasId && <p className={errCls}>{errors.kelasId.message}</p>}
           </div>
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-sm font-medium text-foreground mb-1.5">Materi</label>
-            <input className={inputCls} {...register("materi")} placeholder="cth: Surat Al-Fatihah" />
+            <AutoNumberTextarea
+              name="materi"
+              register={register}
+              setValue={setValue}
+              className={taCls}
+              placeholder="cth: Surat Al-Fatihah"
+            />
             {errors.materi && <p className={errCls}>{errors.materi.message}</p>}
           </div>
           <div>
@@ -152,7 +159,13 @@ export default function RppForm({
       {/* Tujuan Pembelajaran */}
       <section className="rounded-xl bg-card border border-border p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-foreground mb-4">Tujuan Pembelajaran</h2>
-        <textarea className={taCls} {...register("tujuanPembelajaran")} placeholder="Tuliskan tujuan pembelajaran..." />
+        <AutoNumberTextarea
+          name="tujuanPembelajaran"
+          register={register}
+          setValue={setValue}
+          className={taCls}
+          placeholder="Tuliskan tujuan pembelajaran..."
+        />
         {errors.tujuanPembelajaran && <p className={errCls}>{errors.tujuanPembelajaran.message}</p>}
       </section>
 
@@ -197,9 +210,11 @@ export default function RppForm({
                   <p className={errCls}>{errors.pertemuan[i]?.tanggal?.message}</p>
                 )}
               </div>
-              <textarea
+              <AutoNumberTextarea
+                name={`pertemuan.${i}.isiKegiatan`}
+                register={register}
+                setValue={setValue}
                 className={taCls}
-                {...register(`pertemuan.${i}.isiKegiatan`)}
                 placeholder={`Isi kegiatan pertemuan ${i + 1}...`}
               />
               {errors.pertemuan?.[i]?.isiKegiatan && (

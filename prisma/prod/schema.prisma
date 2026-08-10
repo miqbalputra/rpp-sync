@@ -1,6 +1,7 @@
 // Skema PRODUKSI (MariaDB/MySQL) untuk deploy via Coolify.
 // File ini HARUS identik dengan prisma/schema.prisma (versi DEV SQLite) kecuali
-// baris provider di bawah + anotasi @db.Text pada apiKeyEnc. Saat menambah/
+// baris provider di bawah + anotasi @db.Text pada apiKeyEnc, materi,
+// tujuanPembelajaran, dan isiKegiatan (kolom teks panjang RPP). Saat menambah/
 // mengubah model, ubah KEDUA file sekaligus lalu regenerasi migrasi:
 //   dev : npx prisma migrate dev --name <nama>            (migrations/)
 //   prod: npx prisma migrate diff --from-schema-datamodel <lama> --to-schema-datamodel prisma/prod/schema.prisma --script
@@ -179,9 +180,9 @@ model Rpp {
   mapelId           String
   kelasId           String
   noRpp             String?     // Nomor RPP bebas (untuk membedakan & memudahkan pencarian)
-  materi            String
+  materi            String      @db.Text
   alokasiWaktu      String
-  tujuanPembelajaran String
+  tujuanPembelajaran String      @db.Text
   status            RppStatus   @default(DRAFT)
   tanggalPengesahan DateTime
   dibuatOleh        String
@@ -210,7 +211,7 @@ model RppPertemuan {
   id          String   @id @default(cuid())
   rppId       String
   urutan      Int
-  isiKegiatan String
+  isiKegiatan String   @db.Text
   tanggal     DateTime? // Tanggal KBM (kegiatan belajar mengajar) per pertemuan; opsional.
 
   rpp         Rpp     @relation(fields: [rppId], references: [id], onDelete: Cascade)
