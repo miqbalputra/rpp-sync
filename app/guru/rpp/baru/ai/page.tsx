@@ -2,12 +2,20 @@
 import { getRppFormProps } from "../../_load";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { getAiConfig } from "@/lib/ai/client";
 import AiRppForm from "./AiRppForm";
 
 export const metadata = { title: "Buat RPP dengan AI — Guru" };
 
 export default async function NewRppAiPage() {
+  // Kartu di halaman chooser bukan satu-satunya entry point; cegah akses
+  // langsung ke URL ketika Admin mematikan fitur AI.
+  if (!(await getAiConfig())) {
+    redirect("/guru/rpp/baru");
+  }
+
   const props = await getRppFormProps();
   if (!props) {
     return <Card className="p-8 text-center text-muted-foreground">Profil Guru tidak ditemukan. Hubungi Admin.</Card>;

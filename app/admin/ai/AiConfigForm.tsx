@@ -1,7 +1,6 @@
 "use client";
-// Form konfigurasi AI (Admin). API key hanya field password — tidak ditampilkan
-// kembali; indikator "sudah disimpan" cukup. Tombol "Ambil Model" memanggil
-// endpoint untuk mengisi <select> model.
+// Form konfigurasi AI (Admin). Switch di bagian atas mengatur apakah metode
+// "Dibantu AI" ditampilkan dan dapat digunakan oleh Guru.
 import { useTransition, useState } from "react";
 import {
   Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter,
@@ -53,13 +52,13 @@ export function AiConfigForm({ status }: { status: Status }) {
         <div className="space-y-0.5">
           <CardTitle>Pengaturan AI</CardTitle>
           <CardDescription>
-            Hubungkan endpoint AI (OpenAI-compatible / Ollama cloud) untuk fitur &quot;Buat RPP dengan AI&quot;.
+            Atur akses metode pembuatan RPP berbantu AI dan konfigurasi endpointnya.
           </CardDescription>
         </div>
       </CardHeader>
       <CardContent className="pt-6">
         <form id="ai-config-form" action={onSave} className="space-y-5">
-          {/* Aktifkan */}
+          {/* Switch visibilitas & akses metode RPP Dibantu AI */}
           <label
             htmlFor="enabled"
             className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-4 transition hover:border-brand-300 hover:bg-brand-50/40 dark:border-gray-800 dark:hover:border-brand-800 dark:hover:bg-white/[0.03]"
@@ -69,12 +68,17 @@ export function AiConfigForm({ status }: { status: Status }) {
               name="enabled"
               type="checkbox"
               defaultChecked={status.enabled}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-500 accent-brand-500 focus:ring-brand-500/30"
+              role="switch"
+              className="peer sr-only"
+            />
+            <span
+              aria-hidden="true"
+              className="relative mt-0.5 h-6 w-11 shrink-0 rounded-full bg-gray-300 transition-colors after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-brand-500 peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500/40 dark:bg-gray-700"
             />
             <span className="space-y-1">
-              <span className="block text-sm font-medium text-foreground">Aktifkan fitur AI</span>
+              <span className="block text-sm font-medium text-foreground">RPP Dibantu AI</span>
               <span className="block text-sm text-muted-foreground">
-                Saat aktif, guru melihat opsi &quot;Dibantu AI&quot; saat membuat RPP.
+                Saat aktif, Guru melihat opsi &quot;Dibantu AI&quot; saat membuat RPP. Saat nonaktif, opsi ini tidak muncul di dashboard Guru dan tidak dapat digunakan.
               </span>
             </span>
           </label>

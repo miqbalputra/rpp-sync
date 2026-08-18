@@ -9,6 +9,10 @@ import { revalidatePath } from "next/cache";
 import { getAiConfig } from "@/lib/ai/client";
 import { generateRppFromImage } from "@/lib/ai/generate-rpp";
 
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 /** Helper simpan RPP baru. Dipakai createRpp (manual) & createRppAi (AI). */
 async function persistRpp(
   values: RppFormValues,
@@ -65,8 +69,8 @@ async function persistRpp(
     revalidatePath("/guru/rpp");
     revalidatePath("/guru");
     return { ok: true };
-  } catch (e: any) {
-    return { ok: false, error: e?.message ?? "Gagal menyimpan RPP" };
+  } catch (e: unknown) {
+    return { ok: false, error: getActionErrorMessage(e, "Gagal menyimpan RPP") };
   }
 }
 
@@ -78,6 +82,9 @@ export async function createRpp(values: RppFormValues): Promise<RppActionResult>
 /** Simpan RPP yang dibuat lewat flow AI (flag dibuatDenganAI = true). */
 export async function createRppAi(values: RppFormValues): Promise<RppActionResult> {
   const session = await requireGuru();
+  if (!(await getAiConfig())) {
+    return { ok: false, error: "Fitur AI belum diaktifkan atau belum dikonfigurasi Admin." };
+  }
   return persistRpp(values, session, { ai: true });
 }
 
@@ -178,8 +185,8 @@ export async function updateRpp(id: string, values: RppFormValues): Promise<RppA
     revalidatePath("/guru/rpp");
     revalidatePath(`/guru/rpp/${id}`);
     return { ok: true };
-  } catch (e: any) {
-    return { ok: false, error: e?.message ?? "Gagal menyimpan RPP" };
+  } catch (e: unknown) {
+    return { ok: false, error: getActionErrorMessage(e, "Gagal menyimpan RPP") };
   }
 }
 
@@ -196,8 +203,8 @@ export async function softDeleteRpp(id: string): Promise<RppActionResult> {
     revalidatePath("/guru/rpp");
     revalidatePath("/guru");
     return { ok: true };
-  } catch (e: any) {
-    return { ok: false, error: e?.message ?? "Gagal menghapus RPP" };
+  } catch (e: unknown) {
+    return { ok: false, error: getActionErrorMessage(e, "Gagal menghapus RPP") };
   }
 }
 /** Siapkan link WhatsApp share (PRD Tahap 9). Generate export bila perlu, kembalikan URL wa.me. */
@@ -235,7 +242,7 @@ export async function getShareUrl(rppId: string, tipeParam: "image" | "pdf" | "w
     const pesan = `Assalamu'alaikum,\nRPP "${rpp.materi}"\nMapel: ${rpp.mapel.namaMapel} | Kelas: ${rpp.kelas.namaKelas}\nOleh: ${data.namaUstadz}\n\nUnduh dokumen RPP:\n${fileUrl}`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(pesan)}`;
     return { url: waUrl };
-  } catch (e: any) {
-    return { error: e?.message ?? "Gagal menyiapkan link share" };
+  } catch (e: unknown) {
+    return { error: getActionErrorMessage(e, "Gagal menyiapkan link share") };
   }
 }

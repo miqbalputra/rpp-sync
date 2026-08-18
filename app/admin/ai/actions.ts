@@ -60,6 +60,11 @@ export async function simpanPengaturanAi(formData: FormData) {
   });
 
   revalidatePath("/admin/ai");
+  // Perubahan switch harus langsung tercermin pada seluruh entry point Guru.
+  revalidatePath("/guru");
+  revalidatePath("/guru/rpp");
+  revalidatePath("/guru/rpp/baru");
+  revalidatePath("/guru/rpp/baru/ai");
   redirect(`/admin/ai?ok=1`);
 }
 

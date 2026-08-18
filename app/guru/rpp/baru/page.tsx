@@ -1,4 +1,4 @@
-// Halaman pilihan cara buat RPP: Manual atau Dibantu AI.
+// Halaman pilihan cara buat RPP: Manual, Dibantu AI, atau Upload PDF.
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { PenLine, Sparkles, ArrowRight } from "lucide-react";
@@ -48,8 +48,8 @@ export default async function NewRppChooserPage() {
           </Card>
         </Link>
 
-        {/* Dibantu AI */}
-        {aiReady ? (
+        {/* Dibantu AI — hanya tampil jika Admin mengaktifkan dan mengonfigurasi fitur. */}
+        {aiReady && (
           <Link href="/guru/rpp/baru/ai" className="group block">
             <Card className="h-full p-6 transition hover:border-brand-300 hover:shadow-theme-md dark:hover:border-brand-800">
               <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
@@ -64,16 +64,6 @@ export default async function NewRppChooserPage() {
               </span>
             </Card>
           </Link>
-        ) : (
-          <Card className="h-full p-6 opacity-60">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-gray-800">
-              <Sparkles className="h-6 w-6" />
-            </span>
-            <h2 className="mt-4 text-lg font-semibold text-foreground">Dibantu AI</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Admin belum mengaktifkan fitur AI. Minta Admin mengonfigurasi di menu Pengaturan AI.
-            </p>
-          </Card>
         )}
 
         {/* Upload PDF */}
