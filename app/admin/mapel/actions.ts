@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { getErrorCode } from "@/lib/errors";
 
 const MapelSchema = z.object({
   namaMapel: z.string().min(1, "Nama mapel wajib diisi").max(100),
@@ -18,8 +19,8 @@ export async function createMapel(formData: FormData) {
   }
   try {
     await prisma.mapel.create({ data: { namaMapel: parsed.data.namaMapel.trim() } });
-  } catch (e: any) {
-    if (e?.code === "P2002") {
+  } catch (e: unknown) {
+    if (getErrorCode(e) === "P2002") {
       redirect(`/admin/mapel/baru?error=${encodeURIComponent("Nama mapel sudah ada")}`);
     }
     throw e;
@@ -36,8 +37,8 @@ export async function updateMapel(id: string, formData: FormData) {
   }
   try {
     await prisma.mapel.update({ where: { id }, data: { namaMapel: parsed.data.namaMapel.trim() } });
-  } catch (e: any) {
-    if (e?.code === "P2002") {
+  } catch (e: unknown) {
+    if (getErrorCode(e) === "P2002") {
       redirect(`/admin/mapel/${id}/edit?error=${encodeURIComponent("Nama mapel sudah ada")}`);
     }
     throw e;

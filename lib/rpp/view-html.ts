@@ -22,7 +22,9 @@ function esc(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function fmtTanggal(d: Date | string): string {
@@ -81,6 +83,16 @@ export function rppBodyHtml(data: RppViewData): string {
       <td style="${CELL}">${esc(data.alokasiWaktu)}</td>
     </tr>
     ${data.tahunAjaran ? `<tr><td style="${LABEL}">Tahun Ajaran</td><td style="${CELL}" colspan="3">${esc(data.tahunAjaran)}</td></tr>` : ""}
+  </tbody></table>`;
+
+  // ----- Referensi Program Semester -----
+  const promes = `<table style="${TABLE}"><tbody>
+    <tr><td style="${SECTION_HEADER}">Referensi Program Semester (Promes)</td></tr>
+    <tr><td style="${CELL}">
+      ${data.promesUrl
+        ? `<a href="${esc(data.promesUrl)}" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;word-break:break-all;">Lihat Promes Mapel dan Kelas Ini</a><div style="font-size:12px;color:${C.muted};margin-top:4px;word-break:break-all;">${esc(data.promesUrl)}</div>`
+        : `<span style="color:#92400e;">Promes untuk Mapel dan Kelas ini belum tersedia.</span>`}
+    </td></tr>
   </tbody></table>`;
 
   // ----- Tabel Tujuan Pembelajaran -----
@@ -144,5 +156,5 @@ export function rppBodyHtml(data: RppViewData): string {
     </td>
   </tr></tbody></table>`;
 
-  return `<div style="color:${C.text};font-size:14px;">${header}${meta}${tujuan}${kegiatan}${penilaian}${pengesahan}</div>`;
+  return `<div style="color:${C.text};font-size:14px;">${header}${meta}${promes}${tujuan}${kegiatan}${penilaian}${pengesahan}</div>`;
 }

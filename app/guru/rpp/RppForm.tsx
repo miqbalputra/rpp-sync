@@ -1,7 +1,7 @@
 "use client";
 // Form RPP (PRD §5.1) — React Hook Form + useFieldArray untuk pertemuan dinamis.
 import { useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RppFormSchema, RppFormValues, RppActionResult } from "@/lib/rpp/schema";
 import { useRouter } from "next/navigation";
@@ -38,7 +38,6 @@ export default function RppForm({
     register,
     control,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors },
   } = useForm<RppFormValues>({
@@ -58,7 +57,7 @@ export default function RppForm({
 
   const { fields, append, remove } = useFieldArray({ control, name: "pertemuan" });
 
-  const selectedMapel = watch("mapelId");
+  const selectedMapel = useWatch({ control, name: "mapelId" });
   const kelasOptions: KelasOpt[] = selectedMapel ? kelasByMapel[selectedMapel] ?? [] : [];
 
   const onSubmit = handleSubmit(async (values) => {

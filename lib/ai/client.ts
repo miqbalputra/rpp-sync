@@ -2,6 +2,7 @@
 // Semua panggilan server-side. API key tidak pernah diekspos ke client.
 import { prisma } from "@/lib/db";
 import { decrypt } from "./crypto";
+import { getErrorMessage, getErrorName } from "@/lib/errors";
 
 export type AiConfig = {
   enabled: boolean;
@@ -11,6 +12,21 @@ export type AiConfig = {
 };
 
 export type AiResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function readString(value: unknown, key: string): string | undefined {
+  if (!isRecord(value)) return undefined;
+  const result = value[key];
+  return typeof result === "string" ? result : undefined;
+}
+
+function modelName(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  return readString(value, "name") ?? readString(value, "id");
+}
 
 /** Baca konfigurasi AI singleton; decrypt API key. Null jika belum diaktifkan/lengkap. */
 export async function getAiConfig(): Promise<AiConfig | null> {
@@ -68,17 +84,17 @@ export async function listModels(cfg: { endpoint: string; apiKey: string }): Pro
       const body = await res.text().catch(() => "");
       return { ok: false, error: `Endpoint merespons ${res.status}. ${body.slice(0, 200)}` };
     }
-    const json = await res.json();
-    const models: string[] = Array.isArray(json?.data)
-      ? json.data.map((m: any) => m?.id).filter(Boolean)
-      : Array.isArray(json?.models)
-        ? json.models.map((m: any) => (typeof m === "string" ? m : m?.name ?? m?.id)).filter(Boolean)
-        : [];
+    const json: unknown = await res.json();
+    const modelsData = isRecord(json) ? json.data : undefined;
+    const modelsFallback = isRecord(json) ? json.models : undefined;
+    const models = (Array.isArray(modelsData) ? modelsData.map((m) => readString(m, "id")) :
+      Array.isArray(modelsFallback) ? modelsFallback.map(modelName) : [])
+      .filter((model): model is string => typeof model === "string" && model.length > 0);
     if (models.length === 0) return { ok: false, error: "Endpoint tidak mengembalikan daftar model." };
     return { ok: true, data: models };
-  } catch (e: any) {
-    if (e?.name === "AbortError") return { ok: false, error: "Timeout (15s) saat mengambil daftar model." };
-    return { ok: false, error: `Gagal terhubung: ${e?.message ?? e}` };
+  } catch (e: unknown) {
+    if (getErrorName(e) === "AbortError") return { ok: false, error: "Timeout (15s) saat mengambil daftar model." };
+    return { ok: false, error: `Gagal terhubung: ${getErrorMessage(e)}` };
   }
 }
 
@@ -117,12 +133,15 @@ export async function callVisionModel(
       const txt = await res.text().catch(() => "");
       return { ok: false, error: `AI merespons ${res.status}. ${txt.slice(0, 300)}` };
     }
-    const json = await res.json();
-    const content: string | undefined = json?.choices?.[0]?.message?.content;
+    const json: unknown = await res.json();
+    const choices = isRecord(json) ? json.choices : undefined;
+    const firstChoice = Array.isArray(choices) ? choices[0] : undefined;
+    const message = isRecord(firstChoice) ? firstChoice.message : undefined;
+    const content = readString(message, "content");
     if (!content) return { ok: false, error: "AI tidak mengembalikan isi." };
     return { ok: true, data: content };
-  } catch (e: any) {
-    if (e?.name === "AbortError") return { ok: false, error: "Timeout (90s) saat memanggil AI." };
-    return { ok: false, error: `Gagal memanggil AI: ${e?.message ?? e}` };
+  } catch (e: unknown) {
+    if (getErrorName(e) === "AbortError") return { ok: false, error: "Timeout (90s) saat memanggil AI." };
+    return { ok: false, error: `Gagal memanggil AI: ${getErrorMessage(e)}` };
   }
 }

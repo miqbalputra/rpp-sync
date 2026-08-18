@@ -8,6 +8,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { Gender } from "@prisma/client";
 import { ensureGuruProfile } from "@/lib/user";
+import { getErrorCode } from "@/lib/errors";
 
 const GENDERS = ["IKHWAN", "AKHWAT"] as const;
 
@@ -52,8 +53,8 @@ export async function updateProfil(formData: FormData) {
       },
     });
     await ensureGuruProfile(user.id, user.nama, user.role);
-  } catch (e: any) {
-    if (e?.code === "P2002") {
+  } catch (e: unknown) {
+    if (getErrorCode(e) === "P2002") {
       redirect(`/akun/profil?error=${encodeURIComponent("Email atau username sudah dipakai")}`);
     }
     throw e;

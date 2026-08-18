@@ -5,6 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { findActiveUserByEmail, findActiveUserByIdentifier } from "@/lib/user";
+import type { Gender, Role } from "@prisma/client";
 
 // Batasi login Google hanya untuk domain sekolah (opsional). Diparse sekali
 // saat module load (env tidak berubah di runtime). Kosong = tanpa batasan.
@@ -99,17 +100,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.email = dbUser.email;
       } else if (user) {
         // Credentials: id/role/gender/name sudah disisipkan authorize().
-        token.id = (user as any).id;
-        token.role = (user as any).role;
-        token.gender = (user as any).gender ?? null;
+        token.id = user.id;
+        token.role = user.role;
+        token.gender = user.gender ?? null;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).role = token.role;
-        (session.user as any).gender = token.gender ?? null;
+        session.user.id = typeof token.id === "string" ? token.id : "";
+        session.user.role = token.role as Role;
+        session.user.gender = typeof token.gender === "string" ? token.gender as Gender : token.gender === null ? null : undefined;
       }
       return session;
     },

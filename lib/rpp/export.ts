@@ -44,6 +44,7 @@ export function contentHash(data: RppViewData): string {
     data.namaUstadz,
     data.namaKepalaSekolah ?? "",
     data.tempat ?? "",
+    data.promesUrl ?? "",
     data.pertemuan.map((p) => p.isiKegiatan).join("\n"),
     data.penilaian ? [data.penilaian.pengetahuan, data.penilaian.keterampilan, data.penilaian.sikap].join("|") : "",
   ];

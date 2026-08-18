@@ -47,7 +47,10 @@ export function ReferensiFilterClient({ containerId }: { containerId: string }) 
       show(kg, hasVisible);
     }
 
-    setVisibleCount(term === "" ? null : visible);
+    const frame = window.requestAnimationFrame(() => {
+      setVisibleCount(term === "" ? null : visible);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [q, containerId]);
 
   return (

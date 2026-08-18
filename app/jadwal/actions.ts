@@ -5,6 +5,7 @@ import { requireAdminOrPj } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { JadwalFormSchema } from "@/lib/jadwal/schema";
+import { getErrorCode } from "@/lib/errors";
 
 export async function createJadwal(formData: FormData) {
   await requireAdminOrPj();
@@ -27,8 +28,8 @@ export async function createJadwal(formData: FormData) {
         jamSelesai: d.jamSelesai,
       },
     });
-  } catch (e: any) {
-    if (e?.code === "P2002") {
+  } catch (e: unknown) {
+    if (getErrorCode(e) === "P2002") {
       redirect(`/jadwal/baru?error=${encodeURIComponent("Slot jadwal ini sudah ada")}`);
     }
     throw e;

@@ -6,9 +6,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { Role, Gender } from "@prisma/client";
+import { Prisma, Role, Gender } from "@prisma/client";
 import { ensureGuruProfile } from "@/lib/user";
 import { parseGuruImportWorkbook } from "@/lib/guru/excel";
+import { getErrorCode } from "@/lib/errors";
 
 const ROLES = ["ADMIN", "KEPALA_SEKOLAH", "PJ_DINIYYAH", "GURU"] as const;
 const GENDERS = ["IKHWAN", "AKHWAT"] as const;
@@ -63,8 +64,8 @@ export async function createUser(formData: FormData) {
       },
     });
     await ensureGuruProfile(user.id, user.nama, user.role);
-  } catch (e: any) {
-    if (e?.code === "P2002") {
+  } catch (e: unknown) {
+    if (getErrorCode(e) === "P2002") {
       redirect(`/admin/users/baru?error=${encodeURIComponent("Email atau username sudah dipakai")}`);
     }
     throw e;
@@ -89,7 +90,7 @@ export async function updateUser(id: string, formData: FormData) {
     redirect(`/admin/users/${id}/edit?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
   const data = parsed.data;
-  const update: any = {
+  const update: Prisma.UserUpdateInput = {
     nama: data.nama.trim(),
     email: data.email ?? null, // email opsional: bisa dikosongkan saat edit
     username: data.username.trim(), // username sudah di-lowercase saat parse
@@ -107,8 +108,8 @@ export async function updateUser(id: string, formData: FormData) {
   try {
     const user = await prisma.user.update({ where: { id }, data: update });
     await ensureGuruProfile(user.id, user.nama, user.role);
-  } catch (e: any) {
-    if (e?.code === "P2002") {
+  } catch (e: unknown) {
+    if (getErrorCode(e) === "P2002") {
       redirect(`/admin/users/${id}/edit?error=${encodeURIComponent("Email atau username sudah dipakai")}`);
     }
     throw e;
@@ -228,8 +229,8 @@ export async function importGuru(formData: FormData): Promise<ImportGuruResult> 
         emailInFile.add(emailLow);
       }
       created++;
-    } catch (e: any) {
-      rowErrors.push({ row: r.rowNumber, message: e?.code === "P2002" ? "Email/username sudah dipakai" : "Gagal menyimpan" });
+    } catch (e: unknown) {
+      rowErrors.push({ row: r.rowNumber, message: getErrorCode(e) === "P2002" ? "Email/username sudah dipakai" : "Gagal menyimpan" });
     }
   }
 

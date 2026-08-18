@@ -29,7 +29,10 @@ export function RppListSearch({
       if (match) visible++;
     }
 
-    setVisibleCount(term === "" ? null : visible);
+    const frame = window.requestAnimationFrame(() => {
+      setVisibleCount(term === "" ? null : visible);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [q, containerId]);
 
   return (

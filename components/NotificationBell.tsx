@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
   kirimBroadcast, tandaiSemuaDibacaAction,
 } from "@/app/notifikasi/actions";
@@ -39,13 +38,6 @@ type OverdueAlert = {
   penugasanId: string;
 };
 
-const ROLE_LABEL: Record<string, string> = {
-  ADMIN: "Admin",
-  KEPALA_SEKOLAH: "Kepala Sekolah",
-  PJ_DINIYYAH: "PJ Diniyyah",
-  GURU: "Guru",
-};
-
 const SENDER_ROLES = new Set(["ADMIN", "KEPALA_SEKOLAH", "PJ_DINIYYAH"]);
 
 function relTime(iso: string): string {
@@ -66,13 +58,11 @@ export function NotificationBell({
   unreadCount,
   overdue,
   userRole,
-  userId: _userId,
 }: {
   items: NotifItem[];
   unreadCount: number;
   overdue: OverdueAlert[];
   userRole: string;
-  userId: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();

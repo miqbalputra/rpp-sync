@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { getGuruIdFromSession, getNamaKepalaSekolah, assertOwnsRpp } from "@/lib/rpp/queries";
 import { RppView, RppViewData } from "@/components/rpp/RppView";
 import { UploadedRppView } from "@/components/rpp/UploadedRppView";
+import { PromesLinkCard } from "@/components/promes/PromesLinkCard";
+import { getPromesByMapelKelas } from "@/lib/promes/queries";
 import ShareButton from "../ShareButton";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -43,6 +45,7 @@ export default async function RppDetailPage({
   if (!rpp || (guruId && rpp.guruId !== guruId)) notFound();
 
   const isUploaded = rpp.metodeInput === "UPLOAD" && !!rpp.file;
+  const promes = await getPromesByMapelKelas(rpp.mapelId, rpp.kelasId);
   const namaKepalaSekolah = isUploaded ? null : await getNamaKepalaSekolah();
 
   const data: RppViewData = {
@@ -60,6 +63,7 @@ export default async function RppDetailPage({
     namaUstadz: rpp.guru?.namaTampil ?? session?.user?.name ?? "",
     namaKepalaSekolah,
     tempat: "Purbalingga",
+    promesUrl: promes?.url ?? null,
     pertemuan: rpp.pertemuan.map((p) => ({ urutan: p.urutan, isiKegiatan: p.isiKegiatan, tanggal: p.tanggal })),
     penilaian: rpp.penilaian
       ? { pengetahuan: rpp.penilaian.pengetahuan, keterampilan: rpp.penilaian.keterampilan, sikap: rpp.penilaian.sikap }
@@ -96,7 +100,12 @@ export default async function RppDetailPage({
         </div>
       </div>
       <Card className="p-6">
-        {isUploaded && rpp.file ? <UploadedRppView rppId={rpp.id} fileName={rpp.file.namaFile} /> : <RppView data={data} />}
+        {isUploaded && rpp.file ? (
+          <div className="space-y-4">
+            <PromesLinkCard mapelNama={rpp.mapel.namaMapel} kelasNama={rpp.kelas.namaKelas} url={promes?.url} />
+            <UploadedRppView rppId={rpp.id} fileName={rpp.file.namaFile} />
+          </div>
+        ) : <RppView data={data} />}
       </Card>
 
       {!isUploaded && (

@@ -12,6 +12,7 @@ import { AiBadge } from "@/components/rpp/AiBadge";
 import { RppView, type RppViewData } from "@/components/rpp/RppView";
 import { UploadedRppView } from "@/components/rpp/UploadedRppView";
 import { UploadBadge } from "@/components/rpp/UploadBadge";
+import { PromesLinkCard } from "@/components/promes/PromesLinkCard";
 import { ReferensiFilterClient } from "@/components/guru/ReferensiFilterClient";
 
 export const metadata = { title: "Referensi — Guru" };
@@ -44,7 +45,7 @@ function genderLabel(g: "IKHWAN" | "AKHWAT") {
   return g === "IKHWAN" ? "Ikhwan" : "Akhwat";
 }
 
-function toViewData(r: RppRow, namaKepalaSekolah: string | null): RppViewData {
+function toViewData(r: RppRow, namaKepalaSekolah: string | null, promesUrl: string | null): RppViewData {
   return {
     noRpp: r.noRpp,
     dibuatDenganAI: r.dibuatDenganAI,
@@ -60,6 +61,7 @@ function toViewData(r: RppRow, namaKepalaSekolah: string | null): RppViewData {
     namaUstadz: r.guru?.namaTampil ?? "",
     namaKepalaSekolah,
     tempat: "Purbalingga",
+    promesUrl,
     pertemuan: r.pertemuan.map((p) => ({ urutan: p.urutan, isiKegiatan: p.isiKegiatan, tanggal: p.tanggal })),
     penilaian: r.penilaian
       ? { pengetahuan: r.penilaian.pengetahuan, keterampilan: r.penilaian.keterampilan, sikap: r.penilaian.sikap }
@@ -103,6 +105,13 @@ export default async function ReferensiPage({
         },
       })
     : [];
+  const promesList = guruId
+    ? await prisma.promes.findMany({
+        where: { mapel: { deletedAt: null }, kelas: { deletedAt: null } },
+        select: { mapelId: true, kelasId: true, url: true },
+      })
+    : [];
+  const promesByPair = new Map(promesList.map((item) => [`${item.mapelId}:${item.kelasId}`, item.url]));
 
   // Kelompokkan: kelasId → mapelId → daftar RPP.
   const byKelas = new Map<
@@ -181,6 +190,7 @@ export default async function ReferensiPage({
                     <div className="space-y-2">
                       {m.rpps.map((r) => {
                         const isOwn = r.guruId === guruId;
+                        const promesUrl = promesByPair.get(`${r.mapel.id}:${r.kelas.id}`) ?? null;
                         const haystack = [r.guru?.namaTampil, r.mapel.namaMapel, r.materi, r.noRpp]
                           .filter(Boolean)
                           .join(" ");
@@ -210,9 +220,12 @@ export default async function ReferensiPage({
                               </summary>
                               <div className="border-t border-gray-200 p-4 dark:border-gray-800">
                                 {r.metodeInput === "UPLOAD" && r.file ? (
-                                  <UploadedRppView rppId={r.id} fileName={r.file.namaFile} />
+                                  <div className="space-y-4">
+                                    <PromesLinkCard mapelNama={r.mapel.namaMapel} kelasNama={r.kelas.namaKelas} url={promesUrl} />
+                                    <UploadedRppView rppId={r.id} fileName={r.file.namaFile} />
+                                  </div>
                                 ) : (
-                                  <RppView data={toViewData(r, namaKepalaSekolah)} />
+                                  <RppView data={toViewData(r, namaKepalaSekolah, promesUrl)} />
                                 )}
                               </div>
                             </details>

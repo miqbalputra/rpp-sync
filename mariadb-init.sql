@@ -6,10 +6,11 @@
 --   2. Buka editor SQL database itu (atau mysql CLI / phpMyAdmin) pada database target.
 --   3. Copy-paste SELURUH isi file ini lalu jalankan.
 --   4. Deploy aplikasi (Coolify). Saat start, `prisma migrate deploy` akan
---      melihat migrasi `20260721000000_init`, `20260722000000_add_no_rpp`, dan
---      `20260723000000_add_ai_config` dan `20260818000000_add_rpp_upload`
---      sudah tercatat (baris _prisma_migrations
---      di bawah) → dilewati. `db:seed` upsert admin (sudah ada → no-op).
+--      melihat migrasi `20260721000000_init`, `20260722000000_add_no_rpp`,
+--      `20260723000000_add_ai_config`, `20260818000000_add_rpp_upload`, dan
+--      `20260818010000_add_promes` sudah tercatat (baris _prisma_migrations
+--      di bawah) → dilewati. Promes juga tersedia pada init.
+--      `db:seed` upsert admin (sudah ada → no-op).
 --
 -- AKUN ADMIN AWAL:
 --   username : admin
@@ -24,12 +25,14 @@
 --     npx prisma migrate resolve --schema=prisma/prod/schema.prisma --applied 20260721000000_init
 --     npx prisma migrate resolve --schema=prisma/prod/schema.prisma --applied 20260722000000_add_no_rpp
 --     npx prisma migrate resolve --schema=prisma/prod/schema.prisma --applied 20260723000000_add_ai_config
+--     npx prisma migrate resolve --schema=prisma/prod/schema.prisma --applied 20260818000000_add_rpp_upload
+--     npx prisma migrate resolve --schema=prisma/prod/schema.prisma --applied 20260818010000_add_promes
 --   lalu restart. Ini menandai migrasi sebagai applied tanpa cek checksum.
 --
 -- Idempoten: semua INSERT memakai ON DUPLICATE KEY UPDATE, aman dijalankan ulang.
 -- ============================================================================
 
--- ---------- Skema (init + add_no_rpp + add_ai_config + add_rpp_upload) ----------
+-- ---------- Skema (init + add_no_rpp + add_ai_config + add_rpp_upload + add_promes) ----------
 
 CREATE TABLE `users` (
     `id` VARCHAR(191) NOT NULL,
@@ -90,6 +93,19 @@ CREATE TABLE `penugasan` (
     `kelasId` VARCHAR(191) NOT NULL,
 
     UNIQUE INDEX `penugasan_guruId_mapelId_kelasId_key`(`guruId`, `mapelId`, `kelasId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `promes` (
+    `id` VARCHAR(191) NOT NULL,
+    `mapelId` VARCHAR(191) NOT NULL,
+    `kelasId` VARCHAR(191) NOT NULL,
+    `url` TEXT NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `promes_mapelId_kelasId_key`(`mapelId`, `kelasId`),
+    INDEX `promes_kelasId_mapelId_idx`(`kelasId`, `mapelId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -232,6 +248,8 @@ ALTER TABLE `guru_mapel` ADD CONSTRAINT `guru_mapel_mapelId_fkey` FOREIGN KEY (`
 ALTER TABLE `penugasan` ADD CONSTRAINT `penugasan_guruId_fkey` FOREIGN KEY (`guruId`) REFERENCES `gurus`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE `penugasan` ADD CONSTRAINT `penugasan_mapelId_fkey` FOREIGN KEY (`mapelId`) REFERENCES `mapels`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `penugasan` ADD CONSTRAINT `penugasan_kelasId_fkey` FOREIGN KEY (`kelasId`) REFERENCES `kelas`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `promes` ADD CONSTRAINT `promes_mapelId_fkey` FOREIGN KEY (`mapelId`) REFERENCES `mapels`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `promes` ADD CONSTRAINT `promes_kelasId_fkey` FOREIGN KEY (`kelasId`) REFERENCES `kelas`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `rpp` ADD CONSTRAINT `rpp_guruId_fkey` FOREIGN KEY (`guruId`) REFERENCES `gurus`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE `rpp` ADD CONSTRAINT `rpp_mapelId_fkey` FOREIGN KEY (`mapelId`) REFERENCES `mapels`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `rpp` ADD CONSTRAINT `rpp_kelasId_fkey` FOREIGN KEY (`kelasId`) REFERENCES `kelas`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -297,6 +315,15 @@ VALUES (
     'f7be5e79-8f26-47ab-90e8-d3c0a5f287ad',
     'bec67017c2cd96a85113a9e8a69b0a3233f5a664e51c42523fa24d1af6e27f42',
     NOW(3), '20260818000000_add_rpp_upload', NULL, NULL, NOW(3), 1
+)
+ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
+
+-- Penanda mapping Program Semester sudah dibuat oleh skema init.
+INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
+VALUES (
+    'd9e1f0b7-2f0c-4b4b-9d6a-5a7405e1f2f5',
+    '3e110aa8b60372ba96fcc18cf2b14a364f7bb60f7b665a9c0bb0101a605bf39f',
+    NOW(3), '20260818010000_add_promes', NULL, NULL, NOW(3), 1
 )
 ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
 

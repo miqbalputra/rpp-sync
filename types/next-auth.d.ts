@@ -2,6 +2,11 @@
 import { Role, Gender } from "@prisma/client";
 
 declare module "next-auth" {
+  interface User {
+    role: Role;
+    gender?: Gender | null;
+  }
+
   interface Session {
     user: {
       id: string;

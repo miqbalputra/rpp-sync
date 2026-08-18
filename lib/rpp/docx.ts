@@ -5,6 +5,7 @@
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, VerticalAlign,
+  ExternalHyperlink,
 } from "docx";
 import { RppViewData } from "@/components/rpp/RppView";
 
@@ -103,6 +104,32 @@ export async function buildRppDocxBuffer(data: RppViewData): Promise<Buffer> {
     ],
   });
 
+  // ----- Referensi Program Semester -----
+  const promesParagraph = data.promesUrl
+    ? new Paragraph({
+        spacing: { after: 0 },
+        children: [
+          new ExternalHyperlink({
+            link: data.promesUrl,
+            children: [new TextRun({ text: "Lihat Promes Mapel dan Kelas Ini", style: "Hyperlink" })],
+          }),
+          new TextRun({ text: `\n${data.promesUrl}`, color: "475569", size: 18 }),
+        ],
+      })
+    : new Paragraph({
+        spacing: { after: 0 },
+        children: [txt("Promes untuk Mapel dan Kelas ini belum tersedia.", { color: "92400E" })],
+      });
+  const promes = new Table({
+    width: FULL,
+    rows: [
+      new TableRow({ children: [hCell("Referensi Program Semester (Promes)")] }),
+      new TableRow({
+        children: [new TableCell({ width: FULL, verticalAlign: VerticalAlign.TOP, borders: CELL_BORDERS, children: [promesParagraph] })],
+      }),
+    ],
+  });
+
   // ----- Tujuan Pembelajaran -----
   const tujuan = new Table({
     width: FULL,
@@ -193,6 +220,8 @@ export async function buildRppDocxBuffer(data: RppViewData): Promise<Buffer> {
         children: [
           ...judul,
           meta,
+          new Paragraph({ spacing: { after: 80 }, children: [] }),
+          promes,
           new Paragraph({ spacing: { after: 80 }, children: [] }),
           tujuan,
           new Paragraph({ spacing: { after: 80 }, children: [] }),

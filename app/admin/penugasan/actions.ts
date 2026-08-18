@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { getErrorCode } from "@/lib/errors";
 
 const PenugasanSchema = z.object({
   guruId: z.string().min(1, "Guru wajib dipilih"),
@@ -24,8 +25,8 @@ export async function createPenugasan(formData: FormData) {
   }
   try {
     await prisma.penugasan.create({ data: parsed.data });
-  } catch (e: any) {
-    if (e?.code === "P2002") {
+  } catch (e: unknown) {
+    if (getErrorCode(e) === "P2002") {
       redirect(`/admin/penugasan/baru?error=${encodeURIComponent("Penugasan ini sudah ada (guru + mapel + kelas yang sama)")}`);
     }
     throw e;

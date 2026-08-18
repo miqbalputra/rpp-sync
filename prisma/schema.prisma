@@ -130,6 +130,7 @@ model Mapel {
   guruMapel GuruMapel[]
   penugasan Penugasan[]
   rpp       Rpp[]
+  promes    Promes[]
 
   @@map("mapels")
 }
@@ -145,6 +146,7 @@ model Kelas {
 
   penugasan Penugasan[]
   rpp       Rpp[]
+  promes     Promes[]
 
   @@map("kelas")
 }
@@ -178,6 +180,23 @@ model Penugasan {
 
   @@unique([guruId, mapelId, kelasId])
   @@map("penugasan")
+}
+
+// Link Program Semester aktif untuk satu pasangan Mapel + Kelas.
+model Promes {
+  id        String   @id @default(cuid())
+  mapelId   String
+  kelasId   String
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mapel Mapel @relation(fields: [mapelId], references: [id], onDelete: Restrict)
+  kelas Kelas @relation(fields: [kelasId], references: [id], onDelete: Restrict)
+
+  @@unique([mapelId, kelasId])
+  @@index([kelasId, mapelId])
+  @@map("promes")
 }
 
 model Rpp {

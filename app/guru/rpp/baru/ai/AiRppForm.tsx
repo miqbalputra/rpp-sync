@@ -7,6 +7,7 @@ import { Sparkles, Loader2, Camera, RefreshCw } from "lucide-react";
 import RppForm from "../../RppForm";
 import { createRppAi, generateRppDraft } from "../../actions";
 import type { RppFormValues, AiDraft } from "@/lib/rpp/schema";
+import { getErrorMessage } from "@/lib/errors";
 
 type KelasOpt = { id: string; namaKelas: string; gender: string };
 
@@ -58,8 +59,8 @@ export default function AiRppForm({
         return;
       }
       setDraft(res.draft);
-    } catch (e: any) {
-      setError(e?.message ?? "Gagal memanggil AI.");
+    } catch (e: unknown) {
+      setError(getErrorMessage(e, "Gagal memanggil AI."));
     } finally {
       setLoading(false);
     }
@@ -72,7 +73,6 @@ export default function AiRppForm({
   const inputCls =
     "w-full h-11 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/20 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800";
   const labelCls = "block text-sm font-medium text-foreground mb-1.5";
-  const errCls = "text-xs text-error-600 mt-1 dark:text-error-400";
   const sectionCls = "rounded-xl bg-card border border-border p-5 shadow-sm";
 
   // ---- Langkah 2: review dengan RppForm prefilled ----

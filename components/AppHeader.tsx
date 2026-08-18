@@ -13,7 +13,6 @@ import {
 import { useSidebar } from "@/context/SidebarContext";
 import { useTheme } from "@/context/ThemeContext";
 import { logoutAction } from "@/lib/auth-actions";
-import { cn } from "@/lib/utils";
 import { NotificationBell } from "./NotificationBell";
 import type { ShellVariant } from "./Sidebar";
 import type { NotifData } from "@/lib/notifikasi/queries";
@@ -68,7 +67,6 @@ export function AppHeader({
           unreadCount={notifications?.unreadCount ?? 0}
           overdue={notifications?.overdue ?? []}
           userRole={user?.role ?? ""}
-          userId={user?.id ?? ""}
         />
 
         <button

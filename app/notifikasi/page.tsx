@@ -1,6 +1,5 @@
 // Kotak masuk Notifikasi (semua role) + pesan terkirim (sender).
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { getNotifikasiDataForSession, getNotifikasiTerkirim } from "@/lib/notifikasi/queries";
 import { HARI_LABEL, type Hari } from "@/lib/jadwal/schema";

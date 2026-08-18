@@ -47,10 +47,16 @@ function normText(v: unknown): string {
   if (typeof v === "string") return v.trim();
   if (typeof v === "number" || typeof v === "boolean") return String(v);
   // exceljs rich text / formula result
-  if (typeof v === "object" && "richText" in (v as any)) {
-    return ((v as any).richText as { text: string }[]).map((r) => r.text).join("").trim();
+  if (typeof v === "object" && v !== null && "richText" in v) {
+    const richText = v.richText;
+    if (Array.isArray(richText)) {
+      return richText
+        .map((part) => (typeof part === "object" && part !== null && "text" in part ? String(part.text ?? "") : ""))
+        .join("")
+        .trim();
+    }
   }
-  if (typeof v === "object" && "result" in (v as any)) return String((v as any).result ?? "").trim();
+  if (typeof v === "object" && v !== null && "result" in v) return String(v.result ?? "").trim();
   return String(v).trim();
 }
 

@@ -10,6 +10,7 @@ import { rm } from "fs/promises";
 import { existsSync } from "fs";
 import { join } from "path";
 import { removeRppUpload } from "@/lib/rpp/upload-storage";
+import { getErrorCode } from "@/lib/errors";
 
 const EXPORT_DIR = join(process.cwd(), "public", "exports");
 
@@ -68,8 +69,8 @@ export async function permanentDeleteUser(id: string) {
   // kondisi itu harus diselesaikan dulu (tidak bisa hapus permanen).
   try {
     await prisma.user.delete({ where: { id } });
-  } catch (e: any) {
-    if (e?.code === "P2003" || e?.code === "P2014") {
+  } catch (e: unknown) {
+    if (getErrorCode(e) === "P2003" || getErrorCode(e) === "P2014") {
       redirect(`/admin/recycle-bin?error=${encodeURIComponent("User masih terkait RPP/log — tidak bisa dihapus permanen.")}`);
     }
     throw e;
@@ -91,8 +92,8 @@ export async function permanentDeleteMapel(id: string) {
   // onDelete: Restrict dari Rpp & Penugasan → diblok bila masih dipakai.
   try {
     await prisma.mapel.delete({ where: { id } });
-  } catch (e: any) {
-    if (e?.code === "P2003" || e?.code === "P2014") {
+  } catch (e: unknown) {
+    if (getErrorCode(e) === "P2003" || getErrorCode(e) === "P2014") {
       redirect(`/admin/recycle-bin?error=${encodeURIComponent("Mapel masih dipakai RPP/penugasan — tidak bisa dihapus permanen.")}`);
     }
     throw e;
@@ -113,8 +114,8 @@ export async function permanentDeleteKelas(id: string) {
   await requireAdmin();
   try {
     await prisma.kelas.delete({ where: { id } });
-  } catch (e: any) {
-    if (e?.code === "P2003" || e?.code === "P2014") {
+  } catch (e: unknown) {
+    if (getErrorCode(e) === "P2003" || getErrorCode(e) === "P2014") {
       redirect(`/admin/recycle-bin?error=${encodeURIComponent("Kelas masih dipakai RPP/penugasan — tidak bisa dihapus permanen.")}`);
     }
     throw e;

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { getGuruIdFromSession, getNamaKepalaSekolah } from "@/lib/rpp/queries";
 import { getOrCreateExport, ExportTipe } from "@/lib/rpp/export";
+import { getPromesByMapelKelas } from "@/lib/promes/queries";
 import { readFile } from "fs/promises";
 
 export const runtime = "nodejs";
@@ -37,6 +38,7 @@ export async function GET(
     return NextResponse.json({ error: "Terlarang" }, { status: 403 });
   }
 
+  const promes = await getPromesByMapelKelas(rpp.mapelId, rpp.kelasId);
   const namaKepalaSekolah = await getNamaKepalaSekolah();
   const data = {
     materi: rpp.materi,
@@ -51,13 +53,14 @@ export async function GET(
     namaUstadz: rpp.guru?.namaTampil ?? session?.user?.name ?? "",
     namaKepalaSekolah,
     tempat: "Purbalingga",
+    promesUrl: promes?.url ?? null,
     pertemuan: rpp.pertemuan.map((p) => ({ urutan: p.urutan, isiKegiatan: p.isiKegiatan })),
     penilaian: rpp.penilaian
       ? { pengetahuan: rpp.penilaian.pengetahuan, keterampilan: rpp.penilaian.keterampilan, sikap: rpp.penilaian.sikap }
       : null,
   };
 
-  const { absPath, mime, relPath } = await getOrCreateExport(rpp.id, data, tipe);
+  const { absPath, mime } = await getOrCreateExport(rpp.id, data, tipe);
   const buf = await readFile(absPath);
 
   const ext = tipe === "IMAGE" ? "png" : tipe === "DOCX" ? "docx" : "pdf";

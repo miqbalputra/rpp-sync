@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { getGuruIdFromSession, getNamaKepalaSekolah } from "@/lib/rpp/queries";
 import { RppView, RppViewData } from "@/components/rpp/RppView";
 import { UploadedRppView } from "@/components/rpp/UploadedRppView";
+import { PromesLinkCard } from "@/components/promes/PromesLinkCard";
+import { getPromesByMapelKelas } from "@/lib/promes/queries";
 import { duplicateRpp } from "../actions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -37,6 +39,8 @@ export default async function ReferensiDetailPage({
 
   if (!rpp || rpp.deletedAt) notFound();
 
+  const promes = await getPromesByMapelKelas(rpp.mapelId, rpp.kelasId);
+
   if (rpp.metodeInput === "UPLOAD") {
     if (!guruId) notFound();
     return (
@@ -48,7 +52,10 @@ export default async function ReferensiDetailPage({
           <div className="text-xs text-muted-foreground">RPP milik {rpp.guru?.namaTampil ?? "—"} (PDF upload)</div>
         </div>
         <Card className="p-6">
-          {rpp.file ? <UploadedRppView rppId={rpp.id} fileName={rpp.file.namaFile} /> : <p className="text-sm text-muted-foreground">File PDF tidak tersedia.</p>}
+          <div className="space-y-4">
+            <PromesLinkCard mapelNama={rpp.mapel.namaMapel} kelasNama={rpp.kelas.namaKelas} url={promes?.url} />
+            {rpp.file ? <UploadedRppView rppId={rpp.id} fileName={rpp.file.namaFile} /> : <p className="text-sm text-muted-foreground">File PDF tidak tersedia.</p>}
+          </div>
         </Card>
       </div>
     );
@@ -87,6 +94,7 @@ export default async function ReferensiDetailPage({
     namaUstadz: rpp.guru?.namaTampil ?? "",
     namaKepalaSekolah,
     tempat: "Purbalingga",
+    promesUrl: promes?.url ?? null,
     pertemuan: rpp.pertemuan.map((p) => ({ urutan: p.urutan, isiKegiatan: p.isiKegiatan, tanggal: p.tanggal })),
     penilaian: rpp.penilaian
       ? { pengetahuan: rpp.penilaian.pengetahuan, keterampilan: rpp.penilaian.keterampilan, sikap: rpp.penilaian.sikap }

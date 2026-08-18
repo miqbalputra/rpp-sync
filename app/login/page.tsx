@@ -5,6 +5,7 @@ import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { BookOpenText } from "lucide-react";
 import { LoginCard } from "./_LoginCard";
+import { DeveloperCredit } from "@/components/DeveloperCredit";
 
 export const metadata = { title: "Login — Sinkronisasi RPP" };
 
@@ -109,8 +110,9 @@ export default async function LoginPage({
           </p>
         </div>
 
-        <div className="relative text-xs text-primary-foreground/70">
-          Purbalingga — {new Date().getFullYear()}
+        <div className="relative space-y-1 text-xs text-primary-foreground/70">
+          <div>Purbalingga — {new Date().getFullYear()}</div>
+          <DeveloperCredit />
         </div>
       </div>
 
@@ -130,6 +132,7 @@ export default async function LoginPage({
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-md sm:p-8 dark:border-gray-800 dark:bg-gray-900">
             <LoginCard action={loginAction} callbackUrl={params.callbackUrl ?? "/"} error={errMsg} />
           </div>
+          <DeveloperCredit className="mt-5 text-center text-xs text-gray-500 dark:text-gray-400" />
         </div>
       </div>
     </main>

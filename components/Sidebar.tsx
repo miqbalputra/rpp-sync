@@ -26,12 +26,14 @@ const NAVS: Record<ShellVariant, NavEntry[]> = {
     { href: "/admin/kelas", label: "Kelas", icon: School },
     { href: "/admin/penugasan", label: "Penugasan", icon: Link2 },
     { href: "/jadwal", label: "Jadwal", icon: CalendarClock },
+    { href: "/promes", label: "Promes", icon: Link2 },
     { href: "/admin/ai", label: "Pengaturan AI", icon: Sparkles },
     { href: "/admin/recycle-bin", label: "Sampah", icon: Trash2 },
   ],
   guru: [
     { href: "/guru", label: "Dashboard", icon: LayoutDashboard },
     { href: "/guru/rpp", label: "RPP Saya", icon: FileText },
+    { href: "/guru/promes", label: "Promes Saya", icon: BookOpen },
     { href: "/guru/referensi", label: "Referensi", icon: Search },
     { href: "/guru/sampah", label: "Sampah", icon: Trash2 },
   ],
@@ -41,6 +43,7 @@ const NAVS: Record<ShellVariant, NavEntry[]> = {
   pj: [
     { href: "/pj", label: "Dashboard", icon: LayoutDashboard },
     { href: "/jadwal", label: "Jadwal", icon: CalendarClock },
+    { href: "/promes", label: "Promes", icon: Link2 },
   ],
 };
 

@@ -5,6 +5,7 @@
 import { useSidebar } from "@/context/SidebarContext";
 import { Sidebar, type ShellVariant } from "./Sidebar";
 import { AppHeader } from "./AppHeader";
+import { DeveloperCredit } from "./DeveloperCredit";
 import type { NotifData } from "@/lib/notifikasi/queries";
 
 export function AppShell({
@@ -40,6 +41,9 @@ export function AppShell({
         <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6 lg:p-8">
           {children}
         </main>
+        <footer className="mx-auto w-full max-w-7xl px-4 pb-5 text-center text-xs text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
+          <DeveloperCredit />
+        </footer>
       </div>
     </div>
   );

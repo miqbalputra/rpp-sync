@@ -4,6 +4,7 @@ import { useState } from "react";
 import { getShareUrl } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageCircle } from "lucide-react";
+import { getErrorMessage } from "@/lib/errors";
 
 export default function ShareButton({ rppId }: { rppId: string }) {
   const [tipe, setTipe] = useState<"image" | "pdf" | "word">("pdf");
@@ -20,8 +21,8 @@ export default function ShareButton({ rppId }: { rppId: string }) {
       } else {
         setErr(res.error);
       }
-    } catch (e: any) {
-      setErr(e?.message ?? "Gagal");
+    } catch (e: unknown) {
+      setErr(getErrorMessage(e, "Gagal"));
     } finally {
       setLoading(false);
     }
