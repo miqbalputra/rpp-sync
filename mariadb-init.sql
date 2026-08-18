@@ -7,7 +7,8 @@
 --   3. Copy-paste SELURUH isi file ini lalu jalankan.
 --   4. Deploy aplikasi (Coolify). Saat start, `prisma migrate deploy` akan
 --      melihat migrasi `20260721000000_init`, `20260722000000_add_no_rpp`, dan
---      `20260723000000_add_ai_config` sudah tercatat (baris _prisma_migrations
+--      `20260723000000_add_ai_config` dan `20260818000000_add_rpp_upload`
+--      sudah tercatat (baris _prisma_migrations
 --      di bawah) → dilewati. `db:seed` upsert admin (sudah ada → no-op).
 --
 -- AKUN ADMIN AWAL:
@@ -28,7 +29,7 @@
 -- Idempoten: semua INSERT memakai ON DUPLICATE KEY UPDATE, aman dijalankan ulang.
 -- ============================================================================
 
--- ---------- Skema (init + add_no_rpp + add_ai_config) ----------
+-- ---------- Skema (init + add_no_rpp + add_ai_config + add_rpp_upload) ----------
 
 CREATE TABLE `users` (
     `id` VARCHAR(191) NOT NULL,
@@ -105,6 +106,7 @@ CREATE TABLE `rpp` (
     `tanggalPengesahan` DATETIME(3) NOT NULL,
     `dibuatOleh` VARCHAR(191) NOT NULL,
     `dibuatDenganAI` BOOLEAN NOT NULL DEFAULT false,
+    `metodeInput` ENUM('MANUAL', 'AI', 'UPLOAD') NOT NULL DEFAULT 'MANUAL',
     `deletedAt` DATETIME(3) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
@@ -112,6 +114,19 @@ CREATE TABLE `rpp` (
     INDEX `rpp_guruId_idx`(`guruId`),
     INDEX `rpp_guruId_noRpp_idx`(`guruId`, `noRpp`),
     INDEX `rpp_mapelId_kelasId_idx`(`mapelId`, `kelasId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `rpp_file` (
+    `id` VARCHAR(191) NOT NULL,
+    `rppId` VARCHAR(191) NOT NULL,
+    `namaFile` VARCHAR(191) NOT NULL,
+    `pathFile` VARCHAR(191) NOT NULL,
+    `mimeType` VARCHAR(191) NOT NULL DEFAULT 'application/pdf',
+    `ukuranByte` INTEGER NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `rpp_file_rppId_key`(`rppId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -221,6 +236,7 @@ ALTER TABLE `rpp` ADD CONSTRAINT `rpp_guruId_fkey` FOREIGN KEY (`guruId`) REFERE
 ALTER TABLE `rpp` ADD CONSTRAINT `rpp_mapelId_fkey` FOREIGN KEY (`mapelId`) REFERENCES `mapels`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `rpp` ADD CONSTRAINT `rpp_kelasId_fkey` FOREIGN KEY (`kelasId`) REFERENCES `kelas`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `rpp` ADD CONSTRAINT `rpp_dibuatOleh_fkey` FOREIGN KEY (`dibuatOleh`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `rpp_file` ADD CONSTRAINT `rpp_file_rppId_fkey` FOREIGN KEY (`rppId`) REFERENCES `rpp`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE `rpp_pertemuan` ADD CONSTRAINT `rpp_pertemuan_rppId_fkey` FOREIGN KEY (`rppId`) REFERENCES `rpp`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE `rpp_penilaian` ADD CONSTRAINT `rpp_penilaian_rppId_fkey` FOREIGN KEY (`rppId`) REFERENCES `rpp`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE `rpp_log_status` ADD CONSTRAINT `rpp_log_status_rppId_fkey` FOREIGN KEY (`rppId`) REFERENCES `rpp`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
@@ -272,6 +288,15 @@ VALUES (
     '95c87d6d-6c5b-4998-9017-d8e78f30511d',
     'fad2a62f135c4569603446378c796c85c86eabd7c8c324f2bd6d17a50f9376c6',
     NOW(3), '20260723000000_add_ai_config', NULL, NULL, NOW(3), 1
+)
+ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
+
+-- Penanda metadata Upload RPP sudah dibuat oleh skema init.
+INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
+VALUES (
+    'f7be5e79-8f26-47ab-90e8-d3c0a5f287ad',
+    'bec67017c2cd96a85113a9e8a69b0a3233f5a664e51c42523fa24d1af6e27f42',
+    NOW(3), '20260818000000_add_rpp_upload', NULL, NULL, NOW(3), 1
 )
 ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
 

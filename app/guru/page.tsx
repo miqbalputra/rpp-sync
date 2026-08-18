@@ -5,6 +5,7 @@ import { getGuruIdFromSession } from "@/lib/rpp/queries";
 import Link from "next/link";
 import { Plus, ArrowRight, FileText } from "lucide-react";
 import { AiBadge } from "@/components/rpp/AiBadge";
+import { UploadBadge } from "@/components/rpp/UploadBadge";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -72,6 +73,7 @@ export default async function GuruHomePage() {
                     <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
                       {r.mapel.namaMapel} · {r.kelas.namaKelas}
                       {r.dibuatDenganAI && <AiBadge className="ml-1" />}
+                      {r.metodeInput === "UPLOAD" && <UploadBadge className="ml-1" />}
                     </div>
                   </div>
                   <Badge variant={STATUS_VARIANT[r.status] ?? "secondary"} className="ml-3 shrink-0">

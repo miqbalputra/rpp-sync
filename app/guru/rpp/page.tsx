@@ -11,6 +11,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Plus, FileText, Clock } from "lucide-react";
 import { AiBadge } from "@/components/rpp/AiBadge";
+import { UploadBadge } from "@/components/rpp/UploadBadge";
 import { RppListSearch } from "@/components/guru/RppListSearch";
 
 export const metadata = { title: "RPP Saya — Guru" };
@@ -79,6 +80,7 @@ export default async function MyRppPage() {
                       <Badge variant="info" className="font-mono">No. {r.noRpp}</Badge>
                     )}
                     {r.dibuatDenganAI && <AiBadge />}
+                    {r.metodeInput === "UPLOAD" && <UploadBadge />}
                     <span className="text-xs text-muted-foreground">{r.mapel.namaMapel} · {r.kelas.namaKelas}</span>
                   </div>
                   <Link href={`/guru/rpp/${r.id}`} className="block font-semibold text-foreground hover:text-primary mt-1.5 truncate transition-colors">
@@ -90,7 +92,9 @@ export default async function MyRppPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
-                  <Link href={`/guru/rpp/${r.id}/edit`} className="text-primary font-medium hover:underline">Edit</Link>
+                  {r.metodeInput !== "UPLOAD" && (
+                    <Link href={`/guru/rpp/${r.id}/edit`} className="text-primary font-medium hover:underline">Edit</Link>
+                  )}
                   <DeleteButton
                     action={softDeleteRpp.bind(null, r.id)}
                     confirmMessage={`Hapus RPP "${r.materi}"? Bisa dipulihkan dari Sampah Admin.`}

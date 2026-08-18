@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { rm } from "fs/promises";
 import { existsSync } from "fs";
 import { join } from "path";
+import { removeRppUpload } from "@/lib/rpp/upload-storage";
 
 const EXPORT_DIR = join(process.cwd(), "public", "exports");
 
@@ -37,6 +38,7 @@ export async function permanentDeleteRpp(id: string) {
   if (!rpp.deletedAt) redirect("/guru/sampah?error=" + encodeURIComponent("RPP ini tidak ada di Sampah."));
 
   const exports = await prisma.rppExport.findMany({ where: { rppId: id }, select: { pathFile: true } });
+  const uploadedFile = await prisma.rppFile.findUnique({ where: { rppId: id }, select: { pathFile: true } });
   for (const ex of exports) {
     const abs = join(process.cwd(), ex.pathFile);
     if (existsSync(abs)) {
@@ -47,6 +49,7 @@ export async function permanentDeleteRpp(id: string) {
   if (existsSync(rppDir)) {
     try { await rm(rppDir, { recursive: true, force: true }); } catch {}
   }
+  if (uploadedFile) await removeRppUpload(id, uploadedFile.pathFile).catch(() => undefined);
   // Cascade: pertemuan, penilaian, logStatus, exports terhapus otomatis.
   await prisma.rpp.delete({ where: { id } });
   revalidatePath("/guru/sampah");

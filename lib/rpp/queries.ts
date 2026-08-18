@@ -38,6 +38,21 @@ export async function getOpsiFormGuru(guruId: string) {
   return { mapelOptions, kelasByMapel };
 }
 
+/** Pastikan pasangan Mapel + Kelas benar-benar menjadi penugasan guru. */
+export async function assertGuruPenugasan(guruId: string, mapelId: string, kelasId: string) {
+  const assignment = await prisma.penugasan.findFirst({
+    where: {
+      guruId,
+      mapelId,
+      kelasId,
+      deletedAt: null,
+      mapel: { deletedAt: null },
+      kelas: { deletedAt: null },
+    },
+  });
+  if (!assignment) throw new Error("Mapel/Kelas yang dipilih bukan bagian penugasan Anda");
+}
+
 /** Nama Kepala Sekolah aktif (untuk auto-fill pengesahan). */
 export async function getNamaKepalaSekolah(): Promise<string | null> {
   const k = await prisma.user.findFirst({
@@ -49,7 +64,10 @@ export async function getNamaKepalaSekolah(): Promise<string | null> {
 
 /** Verifikasi kepemilikan RPP oleh guru (throw jika bukan miliknya). */
 export async function assertOwnsRpp(rppId: string, guruId: string) {
-  const rpp = await prisma.rpp.findUnique({ where: { id: rppId }, select: { guruId: true, deletedAt: true } });
+  const rpp = await prisma.rpp.findUnique({
+    where: { id: rppId },
+    select: { guruId: true, deletedAt: true, metodeInput: true },
+  });
   if (!rpp) throw new Error("NOT_FOUND");
   if (rpp.guruId !== guruId) throw new Error("FORBIDDEN");
   return rpp;

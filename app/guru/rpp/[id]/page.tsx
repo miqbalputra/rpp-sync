@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getGuruIdFromSession, getNamaKepalaSekolah, assertOwnsRpp } from "@/lib/rpp/queries";
 import { RppView, RppViewData } from "@/components/rpp/RppView";
+import { UploadedRppView } from "@/components/rpp/UploadedRppView";
 import ShareButton from "../ShareButton";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -36,11 +37,13 @@ export default async function RppDetailPage({
       pertemuan: { orderBy: { urutan: "asc" } },
       penilaian: true,
       guru: true,
+      file: true,
     },
   });
   if (!rpp || (guruId && rpp.guruId !== guruId)) notFound();
 
-  const namaKepalaSekolah = await getNamaKepalaSekolah();
+  const isUploaded = rpp.metodeInput === "UPLOAD" && !!rpp.file;
+  const namaKepalaSekolah = isUploaded ? null : await getNamaKepalaSekolah();
 
   const data: RppViewData = {
     noRpp: rpp.noRpp,
@@ -70,28 +73,38 @@ export default async function RppDetailPage({
           <ArrowLeft className="h-4 w-4" /> Kembali ke RPP Saya
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          <a href={`/api/rpp/${id}/export?tipe=image`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))} title="Unduh sebagai gambar PNG">
-            <ImageIcon className="h-4 w-4" /> Gambar
-          </a>
-          <a href={`/api/rpp/${id}/export?tipe=pdf`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))} title="Unduh sebagai PDF">
-            <FileText className="h-4 w-4" /> PDF
-          </a>
-          <a href={`/api/rpp/${id}/export?tipe=word`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))} title="Unduh sebagai Word (.docx)">
-            <FileType2 className="h-4 w-4" /> Word
-          </a>
-          <Link href={`/guru/rpp/${id}/edit`} className={cn(buttonVariants({ variant: "default", size: "sm" }))}>
-            <Pencil className="h-4 w-4" /> Edit RPP
-          </Link>
+          {isUploaded ? (
+            <a href={`/api/rpp/${id}/file?download=1`} className={cn(buttonVariants({ variant: "default", size: "sm" }))}>
+              <FileText className="h-4 w-4" /> Download PDF
+            </a>
+          ) : (
+            <>
+              <a href={`/api/rpp/${id}/export?tipe=image`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))} title="Unduh sebagai gambar PNG">
+                <ImageIcon className="h-4 w-4" /> Gambar
+              </a>
+              <a href={`/api/rpp/${id}/export?tipe=pdf`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))} title="Unduh sebagai PDF">
+                <FileText className="h-4 w-4" /> PDF
+              </a>
+              <a href={`/api/rpp/${id}/export?tipe=word`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))} title="Unduh sebagai Word (.docx)">
+                <FileType2 className="h-4 w-4" /> Word
+              </a>
+              <Link href={`/guru/rpp/${id}/edit`} className={cn(buttonVariants({ variant: "default", size: "sm" }))}>
+                <Pencil className="h-4 w-4" /> Edit RPP
+              </Link>
+            </>
+          )}
         </div>
       </div>
       <Card className="p-6">
-        <RppView data={data} />
+        {isUploaded && rpp.file ? <UploadedRppView rppId={rpp.id} fileName={rpp.file.namaFile} /> : <RppView data={data} />}
       </Card>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3 justify-between">
-        <div className="text-sm text-muted-foreground">Bagikan dokumen RPP ini:</div>
-        <ShareButton rppId={id} />
-      </div>
+      {!isUploaded && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 justify-between">
+          <div className="text-sm text-muted-foreground">Bagikan dokumen RPP ini:</div>
+          <ShareButton rppId={id} />
+        </div>
+      )}
     </div>
   );
 }

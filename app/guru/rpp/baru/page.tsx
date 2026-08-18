@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { PenLine, Sparkles, ArrowRight } from "lucide-react";
 import { getRppFormProps } from "../_load";
 import { getAiConfig } from "@/lib/ai/client";
+import UploadRppCard from "./UploadRppCard";
 
 export const metadata = { title: "Buat RPP — Guru" };
 
@@ -74,6 +75,9 @@ export default async function NewRppChooserPage() {
             </p>
           </Card>
         )}
+
+        {/* Upload PDF */}
+        <UploadRppCard />
       </div>
     </div>
   );

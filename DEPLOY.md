@@ -38,12 +38,14 @@ Set minimal:
 
 ## 4. Persistent storage (penting)
 
-File export RPP (PNG/PDF/DOCX) ditulis ke folder lokal di container
-(lihat `lib/rpp/export.ts`, `EXPORT_DIR`). Tanpa volume, file hilang tiap
-redeploy. Di Coolify:
+File export RPP (PNG/PDF/DOCX) dan PDF RPP yang di-upload ditulis ke folder
+lokal di container (lihat `lib/rpp/export.ts` dan `lib/rpp/upload-storage.ts`).
+Tanpa volume, file hilang tiap redeploy. Di Coolify:
 
-- **Application → Persistent Storage → Add Volume**, mount path mis. `/app/public/exports`
-  (sesuaikan dengan `EXPORT_DIR` di `lib/rpp/export.ts`).
+- **Application → Persistent Storage → Add Volume**, mount path `/app/storage`
+  untuk mempertahankan PDF upload antar-redeploy.
+- Pertahankan volume export yang sudah ada pada mount path `/app/public/exports`
+  agar hasil PNG/PDF/DOCX juga tidak hilang.
 
 ## 5. Domain & HTTPS
 

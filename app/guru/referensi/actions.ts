@@ -19,6 +19,9 @@ export async function duplicateRpp(sourceId: string) {
   });
   if (!src) redirect("/guru/referensi?error=" + encodeURIComponent("RPP sumber tidak ditemukan"));
   if (src.guruId === guruId) redirect("/guru/referensi?error=" + encodeURIComponent("Tidak bisa menduplikat RPP sendiri"));
+  if (src.metodeInput === "UPLOAD") {
+    redirect("/guru/referensi?error=" + encodeURIComponent("RPP PDF tidak bisa diduplikat sebagai RPP terstruktur"));
+  }
 
   const hasPenugasan = await prisma.penugasan.findFirst({
     where: {
@@ -47,6 +50,7 @@ export async function duplicateRpp(sourceId: string) {
         status: "DRAFT",
         tanggalPengesahan: today,
         dibuatOleh: session.user.id,
+        metodeInput: "MANUAL",
         pertemuan: {
           create: src.pertemuan.map((p, i) => ({
             urutan: i + 1,

@@ -36,6 +36,12 @@ enum RppStatus {
   DISETUJUI_KEPALA
 }
 
+enum RppInputMethod {
+  MANUAL
+  AI
+  UPLOAD
+}
+
 enum ExportType {
   IMAGE
   PDF
@@ -187,6 +193,7 @@ model Rpp {
   tanggalPengesahan DateTime
   dibuatOleh        String
   dibuatDenganAI    Boolean     @default(false) // true jika dibuat lewat flow "Dibantu AI"
+  metodeInput       RppInputMethod @default(MANUAL)
   deletedAt         DateTime?
 
   createdAt         DateTime    @default(now())
@@ -196,6 +203,7 @@ model Rpp {
   mapel             Mapel       @relation(fields: [mapelId], references: [id], onDelete: Restrict)
   kelas             Kelas       @relation(fields: [kelasId], references: [id], onDelete: Restrict)
   dibuatOlehUser    User        @relation("RppDibuatOleh", fields: [dibuatOleh], references: [id])
+  file              RppFile?
   pertemuan         RppPertemuan[]
   penilaian         RppPenilaian?
   logStatus         RppLogStatus[]
@@ -205,6 +213,20 @@ model Rpp {
   @@index([guruId, noRpp])
   @@index([mapelId, kelasId])
   @@map("rpp")
+}
+
+model RppFile {
+  id         String   @id @default(cuid())
+  rppId      String   @unique
+  namaFile   String
+  pathFile   String
+  mimeType   String   @default("application/pdf")
+  ukuranByte Int
+  createdAt  DateTime @default(now())
+
+  rpp        Rpp      @relation(fields: [rppId], references: [id], onDelete: Cascade)
+
+  @@map("rpp_file")
 }
 
 model RppPertemuan {

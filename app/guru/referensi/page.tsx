@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { Copy, ChevronRight } from "lucide-react";
 import { AiBadge } from "@/components/rpp/AiBadge";
 import { RppView, type RppViewData } from "@/components/rpp/RppView";
+import { UploadedRppView } from "@/components/rpp/UploadedRppView";
+import { UploadBadge } from "@/components/rpp/UploadBadge";
 import { ReferensiFilterClient } from "@/components/guru/ReferensiFilterClient";
 
 export const metadata = { title: "Referensi — Guru" };
@@ -19,6 +21,7 @@ type RppRow = {
   guruId: string | null;
   noRpp: string | null;
   dibuatDenganAI: boolean;
+  metodeInput: "MANUAL" | "AI" | "UPLOAD";
   materi: string;
   alokasiWaktu: string;
   tujuanPembelajaran: string;
@@ -34,6 +37,7 @@ type RppRow = {
   guru: { namaTampil: string } | null;
   pertemuan: { urutan: number; isiKegiatan: string; tanggal: Date | null }[];
   penilaian: { pengetahuan: string; keterampilan: string; sikap: string } | null;
+  file: { namaFile: string } | null;
 };
 
 function genderLabel(g: "IKHWAN" | "AKHWAT") {
@@ -95,6 +99,7 @@ export default async function ReferensiPage({
           guru: { select: { namaTampil: true } },
           pertemuan: { orderBy: { urutan: "asc" } },
           penilaian: true,
+          file: true,
         },
       })
     : [];
@@ -198,16 +203,21 @@ export default async function ReferensiPage({
                                   </span>
                                 )}
                                 {r.dibuatDenganAI && <AiBadge />}
+                                {r.metodeInput === "UPLOAD" && <UploadBadge />}
                                 <span className="truncate text-sm text-muted-foreground">
                                   — {r.materi}
                                 </span>
                               </summary>
                               <div className="border-t border-gray-200 p-4 dark:border-gray-800">
-                                <RppView data={toViewData(r, namaKepalaSekolah)} />
+                                {r.metodeInput === "UPLOAD" && r.file ? (
+                                  <UploadedRppView rppId={r.id} fileName={r.file.namaFile} />
+                                ) : (
+                                  <RppView data={toViewData(r, namaKepalaSekolah)} />
+                                )}
                               </div>
                             </details>
 
-                            {!isOwn && (
+                            {!isOwn && r.metodeInput !== "UPLOAD" && (
                               <form
                                 action={duplicateRpp.bind(null, r.id) as unknown as (fd: FormData) => Promise<void>}
                                 className="p-3"

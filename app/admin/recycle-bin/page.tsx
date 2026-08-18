@@ -12,6 +12,7 @@ import {
 import { PageHeader, Card, EmptyState, ErrorBanner } from "@/components/admin/ui";
 import PermanentDeleteButton from "@/components/admin/PermanentDeleteButton";
 import { AiBadge } from "@/components/rpp/AiBadge";
+import { UploadBadge } from "@/components/rpp/UploadBadge";
 import { HARI_LABEL } from "@/lib/jadwal/schema";
 import {
   Table, TableHead, TableHeader, TableBody, TableRow, TableCell,
@@ -119,6 +120,7 @@ export default async function RecycleBinPage({
                         <div className="flex items-center gap-2">
                           <span>{r.materi}</span>
                           {r.dibuatDenganAI && <AiBadge />}
+                          {r.metodeInput === "UPLOAD" && <UploadBadge />}
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{r.guru?.namaTampil ?? "—"}</TableCell>

@@ -78,7 +78,7 @@ export async function SchoolStatsDashboard({
     prisma.guru.findMany({ where: { deletedAt: null }, select: { id: true, namaTampil: true } }),
     prisma.rpp.findMany({
       where: { deletedAt: null },
-      select: { kelasId: true, mapelId: true, guruId: true, dibuatDenganAI: true, createdAt: true },
+      select: { kelasId: true, mapelId: true, guruId: true, dibuatDenganAI: true, metodeInput: true, createdAt: true },
     }),
     prisma.penugasan.findMany({
       where: { deletedAt: null, guru: { deletedAt: null }, mapel: { deletedAt: null }, kelas: { deletedAt: null } },
@@ -121,11 +121,13 @@ export async function SchoolStatsDashboard({
     }))
     .sort((a, b) => b.count - a.count);
 
-  // RPP AI vs manual.
-  const aiCount = rpps.filter((r) => r.dibuatDenganAI).length;
-  const manualCount = rppAktif - aiCount;
+  // RPP berdasarkan metode input. dibuatDenganAI tetap dihormati untuk data lama.
+  const aiCount = rpps.filter((r) => r.dibuatDenganAI || r.metodeInput === "AI").length;
+  const uploadCount = rpps.filter((r) => r.metodeInput === "UPLOAD").length;
+  const manualCount = rppAktif - aiCount - uploadCount;
   const aiPct = rppAktif > 0 ? Math.round((aiCount / rppAktif) * 100) : 0;
-  const manualPct = rppAktif > 0 ? 100 - aiPct : 0;
+  const uploadPct = rppAktif > 0 ? Math.round((uploadCount / rppAktif) * 100) : 0;
+  const manualPct = rppAktif > 0 ? 100 - aiPct - uploadPct : 0;
 
   // Cakupan penugasan vs RPP.
   const uncovered = penugasanList
@@ -207,12 +209,12 @@ export async function SchoolStatsDashboard({
         </Card>
       </div>
 
-      {/* AI vs manual & cakupan penugasan */}
+      {/* Metode input & cakupan penugasan */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Sparkles className="h-4 w-4 text-brand-600" /> RPP AI vs Manual
+              <Sparkles className="h-4 w-4 text-brand-600" /> RPP berdasarkan metode input
             </h2>
             <span className="text-xs text-muted-foreground">{rppAktif} RPP</span>
           </div>
@@ -231,14 +233,21 @@ export async function SchoolStatsDashboard({
                   <span className="font-semibold tabular-nums text-foreground">{manualCount}</span>
                   <span className="text-muted-foreground">Manual</span>
                 </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500" />
+                  <span className="font-semibold tabular-nums text-foreground">{uploadCount}</span>
+                  <span className="text-muted-foreground">Upload</span>
+                </span>
               </div>
               <div className="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
                 <div className="bg-brand-500" style={{ width: `${aiPct}%` }} />
                 <div className="bg-gray-300 dark:bg-gray-600" style={{ width: `${manualPct}%` }} />
+                <div className="bg-blue-500" style={{ width: `${uploadPct}%` }} />
               </div>
               <div className="mt-2 flex justify-between text-xs text-muted-foreground">
                 <span>AI {aiPct}%</span>
                 <span>Manual {manualPct}%</span>
+                <span>Upload {uploadPct}%</span>
               </div>
             </>
           )}

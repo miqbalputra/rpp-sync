@@ -2,27 +2,12 @@
 "use server";
 import { prisma } from "@/lib/db";
 import { requireGuru } from "@/lib/auth-guard";
-import { getGuruIdFromSession, assertOwnsRpp, getNamaKepalaSekolah } from "@/lib/rpp/queries";
+import { getGuruIdFromSession, assertOwnsRpp, getNamaKepalaSekolah, assertGuruPenugasan } from "@/lib/rpp/queries";
 import { RppFormSchema, RppFormValues, RppActionResult, AiDraft } from "@/lib/rpp/schema";
 import { getOrCreateExport, ExportTipe } from "@/lib/rpp/export";
 import { revalidatePath } from "next/cache";
 import { getAiConfig } from "@/lib/ai/client";
 import { generateRppFromImage } from "@/lib/ai/generate-rpp";
-
-/** Pastikan mapel+kelas terpilih adalah milik penugasan guru. */
-async function validatePenugasan(guruId: string, mapelId: string, kelasId: string) {
-  const t = await prisma.penugasan.findFirst({
-    where: {
-      guruId,
-      mapelId,
-      kelasId,
-      deletedAt: null,
-      mapel: { deletedAt: null },
-      kelas: { deletedAt: null },
-    },
-  });
-  if (!t) throw new Error("Mapel/Kelas yang dipilih bukan bagian penugasan Anda");
-}
 
 /** Helper simpan RPP baru. Dipakai createRpp (manual) & createRppAi (AI). */
 async function persistRpp(
@@ -39,7 +24,7 @@ async function persistRpp(
       return { ok: false, error: parsed.error.issues[0].message };
     }
     const d = parsed.data;
-    await validatePenugasan(guruId, d.mapelId, d.kelasId);
+    await assertGuruPenugasan(guruId, d.mapelId, d.kelasId);
 
     const tanggalPengesahan = new Date(d.tanggalPengesahan + "T00:00:00");
 
@@ -57,6 +42,7 @@ async function persistRpp(
           tanggalPengesahan,
           dibuatOleh: session.user.id,
           dibuatDenganAI: opts.ai,
+          metodeInput: opts.ai ? "AI" : "MANUAL",
           pertemuan: {
             create: d.pertemuan.map((p, i) => ({
               urutan: i + 1,
@@ -130,14 +116,17 @@ export async function updateRpp(id: string, values: RppFormValues): Promise<RppA
     const guruId = await getGuruIdFromSession(session);
     if (!guruId) return { ok: false, error: "Profil guru tidak ditemukan" };
 
-    await assertOwnsRpp(id, guruId); // throw jika bukan miliknya
+    const ownedRpp = await assertOwnsRpp(id, guruId); // throw jika bukan miliknya
+    if (ownedRpp.metodeInput === "UPLOAD") {
+      return { ok: false, error: "RPP PDF tidak memiliki form edit terstruktur" };
+    }
 
     const parsed = RppFormSchema.safeParse(values);
     if (!parsed.success) {
       return { ok: false, error: parsed.error.issues[0].message };
     }
     const d = parsed.data;
-    await validatePenugasan(guruId, d.mapelId, d.kelasId);
+    await assertGuruPenugasan(guruId, d.mapelId, d.kelasId);
 
     const tanggalPengesahan = new Date(d.tanggalPengesahan + "T00:00:00");
 
@@ -224,6 +213,7 @@ export async function getShareUrl(rppId: string, tipeParam: "image" | "pdf" | "w
       include: { mapel: true, kelas: true, pertemuan: { orderBy: { urutan: "asc" } }, penilaian: true, guru: true },
     });
     if (!rpp) return { error: "RPP tidak ditemukan" };
+    if (rpp.metodeInput === "UPLOAD") return { error: "RPP PDF tidak memiliki export terstruktur" };
 
     const namaKepalaSekolah = await getNamaKepalaSekolah();
     const data = {

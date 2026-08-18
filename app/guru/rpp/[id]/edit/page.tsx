@@ -4,6 +4,7 @@ import { loadRppForEdit } from "@/lib/rpp/queries";
 import RppForm from "../../RppForm";
 import { updateRpp } from "../../actions";
 import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 
 export const metadata = { title: "Edit RPP — Guru" };
 
@@ -22,6 +23,7 @@ export default async function EditRppPage({
   } catch {
     notFound();
   }
+  if (rpp.metodeInput === "UPLOAD") redirect(`/guru/rpp/${id}`);
 
   const defaultValues = {
     mapelId: rpp.mapelId,

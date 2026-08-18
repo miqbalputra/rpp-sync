@@ -7,6 +7,7 @@ import { restoreRpp, permanentDeleteRpp } from "./actions";
 import { PageHeader, Card, EmptyState, ErrorBanner } from "@/components/admin/ui";
 import PermanentDeleteButton from "@/components/admin/PermanentDeleteButton";
 import { AiBadge } from "@/components/rpp/AiBadge";
+import { UploadBadge } from "@/components/rpp/UploadBadge";
 import {
   Table, TableHead, TableHeader, TableBody, TableRow, TableCell,
 } from "@/components/ui/table";
@@ -62,6 +63,7 @@ export default async function GuruSampahPage({
                     <div className="flex items-center gap-2">
                       <span>{r.materi}</span>
                       {r.dibuatDenganAI && <AiBadge />}
+                      {r.metodeInput === "UPLOAD" && <UploadBadge />}
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">{r.mapel.namaMapel} / {r.kelas.namaKelas}</TableCell>

@@ -30,6 +30,9 @@ export async function GET(
   if (!rpp || rpp.deletedAt) {
     return NextResponse.json({ error: "RPP tidak ditemukan" }, { status: 404 });
   }
+  if (rpp.metodeInput === "UPLOAD") {
+    return NextResponse.json({ error: "RPP PDF tidak memiliki export terstruktur" }, { status: 400 });
+  }
   if (!guruId || rpp.guruId !== guruId) {
     return NextResponse.json({ error: "Terlarang" }, { status: 403 });
   }

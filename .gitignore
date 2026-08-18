@@ -43,6 +43,9 @@ next-env.d.ts
 # RPP export files (cache generate gambar/pdf/word)
 /public/exports
 
+# Private uploaded RPP PDF files
+/storage/rpp-uploads
+
 # SQLite dev database
 /prisma/dev.db
 /prisma/dev.db-journal

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getGuruIdFromSession, getNamaKepalaSekolah } from "@/lib/rpp/queries";
 import { RppView, RppViewData } from "@/components/rpp/RppView";
+import { UploadedRppView } from "@/components/rpp/UploadedRppView";
 import { duplicateRpp } from "../actions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -30,12 +31,30 @@ export default async function ReferensiDetailPage({
       pertemuan: { orderBy: { urutan: "asc" } },
       penilaian: true,
       guru: true,
+      file: true,
     },
   });
 
   if (!rpp || rpp.deletedAt) notFound();
 
-  // Akses hanya jika: bukan milik sendiri & guru punya penugasan (mapel,kelas) sama
+  if (rpp.metodeInput === "UPLOAD") {
+    if (!guruId) notFound();
+    return (
+      <div className="max-w-3xl">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/guru/referensi" className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="h-4 w-4" /> Kembali ke Referensi
+          </Link>
+          <div className="text-xs text-muted-foreground">RPP milik {rpp.guru?.namaTampil ?? "—"} (PDF upload)</div>
+        </div>
+        <Card className="p-6">
+          {rpp.file ? <UploadedRppView rppId={rpp.id} fileName={rpp.file.namaFile} /> : <p className="text-sm text-muted-foreground">File PDF tidak tersedia.</p>}
+        </Card>
+      </div>
+    );
+  }
+
+  // Akses terstruktur tetap hanya untuk guru lain yang punya penugasan (mapel,kelas) sama.
   const allowed =
     guruId &&
     rpp.guruId !== guruId &&

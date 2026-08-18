@@ -23,6 +23,13 @@ export const RppFormSchema = z.object({
   }),
 });
 
+export const RppUploadMetadataSchema = z.object({
+  mapelId: z.string().min(1, "Mata pelajaran wajib dipilih"),
+  kelasId: z.string().min(1, "Kelas wajib dipilih"),
+  noRpp: z.string().max(50, "No. RPP maksimal 50 karakter").optional(),
+  tanggalPengesahan: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal pengesahan tidak valid"),
+});
+
 export type RppFormValues = z.infer<typeof RppFormSchema>;
 export type RppActionResult = { ok: true; id?: string } | { ok: false; error: string };
 
