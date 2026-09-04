@@ -5,6 +5,7 @@ import { requireGuru } from "@/lib/auth-guard";
 import { getGuruIdFromSession } from "@/lib/rpp/queries";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { notifySchool } from "@/lib/integration/webhook";
 
 export async function duplicateRpp(sourceId: string) {
   const session = await requireGuru();
@@ -73,5 +74,6 @@ export async function duplicateRpp(sourceId: string) {
 
   revalidatePath("/guru/rpp");
   revalidatePath("/guru");
+  await notifySchool("rpp.upsert", newRpp.id);
   redirect(`/guru/rpp/${newRpp.id}/edit?dup=1`);
 }

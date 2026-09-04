@@ -1,0 +1,1 @@
+ALTER TABLE `promes` ADD COLUMN `deletedAt` DATETIME NULL;

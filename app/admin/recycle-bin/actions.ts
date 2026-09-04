@@ -11,6 +11,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { removeRppUpload } from "@/lib/rpp/upload-storage";
 import { getErrorCode } from "@/lib/errors";
+import { notifySchool } from "@/lib/integration/webhook";
 
 const EXPORT_DIR = join(process.cwd(), "public", "exports");
 
@@ -25,6 +26,7 @@ async function revalidateTrash() {
 export async function restoreRpp(id: string) {
   await requireAdmin();
   await prisma.rpp.update({ where: { id }, data: { deletedAt: null } });
+  await notifySchool("rpp.upsert", id);
   await revalidateTrash();
   redirect("/admin/recycle-bin");
 }

@@ -11,6 +11,7 @@ import { rm } from "fs/promises";
 import { existsSync } from "fs";
 import { join } from "path";
 import { removeRppUpload } from "@/lib/rpp/upload-storage";
+import { notifySchool } from "@/lib/integration/webhook";
 
 const EXPORT_DIR = join(process.cwd(), "public", "exports");
 
@@ -22,6 +23,7 @@ export async function restoreRpp(id: string) {
   const rpp = await assertOwnsRpp(id, guruId); // pastikan milik sendiri
   if (!rpp.deletedAt) redirect("/guru/sampah"); // bukan di Sampah → tidak ada yang dipulihkan
   await prisma.rpp.update({ where: { id }, data: { deletedAt: null } });
+  await notifySchool("rpp.upsert", id);
   revalidatePath("/guru/sampah");
   revalidatePath("/guru/rpp");
   revalidatePath("/guru");

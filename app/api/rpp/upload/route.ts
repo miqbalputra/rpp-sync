@@ -7,6 +7,7 @@ import { RppUploadMetadataSchema } from "@/lib/rpp/schema";
 import { getOriginalPdfName, getPdfTitle, isPdfBytes, removeRppUpload, writeRppUpload } from "@/lib/rpp/upload-storage";
 import { RPP_UPLOAD_MAX_BYTES } from "@/lib/rpp/upload-constants";
 import { revalidatePath } from "next/cache";
+import { notifySchool } from "@/lib/integration/webhook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
     revalidatePath("/guru/rpp");
     revalidatePath("/guru/referensi");
     revalidatePath("/guru");
+    await notifySchool("rpp.upsert", rppId);
     return NextResponse.json({ id: rppId }, { status: 201 });
   } catch (error) {
     return errorResponse(error instanceof Error ? error.message : "Gagal menyimpan RPP PDF", 500);

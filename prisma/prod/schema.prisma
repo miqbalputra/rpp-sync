@@ -188,6 +188,7 @@ model Promes {
   mapelId   String
   kelasId   String
   url       String   @db.Text
+  deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

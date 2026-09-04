@@ -5,6 +5,7 @@ import { requireAdminOrPj } from "@/lib/auth-guard";
 import { PromesSchema } from "@/lib/promes/schema";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { notifySchool } from "@/lib/integration/webhook";
 
 function isUniqueConstraintError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
@@ -40,7 +41,11 @@ export async function createPromes(formData: FormData) {
 
   try {
     await assertActivePair(parsed.data.mapelId, parsed.data.kelasId);
-    await prisma.promes.create({ data: parsed.data });
+    const existing = await prisma.promes.findUnique({ where: { mapelId_kelasId: { mapelId: parsed.data.mapelId, kelasId: parsed.data.kelasId } } });
+    const promes = existing
+      ? await prisma.promes.update({ where: { id: existing.id }, data: { ...parsed.data, deletedAt: null } })
+      : await prisma.promes.create({ data: parsed.data });
+    await notifySchool("promes.upsert", promes.id);
   } catch (error: unknown) {
     if (isUniqueConstraintError(error)) {
       redirect(`/promes/baru?error=${encodeURIComponent("Pasangan Mapel dan Kelas ini sudah memiliki Promes")}`);
@@ -66,6 +71,7 @@ export async function updatePromes(id: string, formData: FormData) {
   try {
     await assertActivePair(parsed.data.mapelId, parsed.data.kelasId);
     await prisma.promes.update({ where: { id }, data: parsed.data });
+    await notifySchool("promes.upsert", id);
   } catch (error: unknown) {
     if (isUniqueConstraintError(error)) {
       redirect(`/promes/${id}/edit?error=${encodeURIComponent("Pasangan Mapel dan Kelas ini sudah memiliki Promes")}`);
@@ -79,7 +85,8 @@ export async function updatePromes(id: string, formData: FormData) {
 
 export async function deletePromes(id: string) {
   await requireAdminOrPj();
-  await prisma.promes.delete({ where: { id } });
+  await prisma.promes.update({ where: { id }, data: { deletedAt: new Date() } });
+  await notifySchool("promes.deleted", id);
   revalidatePromesViews();
   redirect("/promes");
 }

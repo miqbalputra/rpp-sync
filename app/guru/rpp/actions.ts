@@ -8,6 +8,7 @@ import { getOrCreateExport, ExportTipe } from "@/lib/rpp/export";
 import { revalidatePath } from "next/cache";
 import { getAiConfig } from "@/lib/ai/client";
 import { generateRppFromImage } from "@/lib/ai/generate-rpp";
+import { notifySchool } from "@/lib/integration/webhook";
 
 function getActionErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -32,7 +33,7 @@ async function persistRpp(
 
     const tanggalPengesahan = new Date(d.tanggalPengesahan + "T00:00:00");
 
-    await prisma.$transaction(async (tx) => {
+    const rpp = await prisma.$transaction(async (tx) => {
       const rpp = await tx.rpp.create({
         data: {
           guruId,
@@ -65,6 +66,8 @@ async function persistRpp(
       });
       return rpp;
     });
+
+    await notifySchool("rpp.upsert", rpp.id);
 
     revalidatePath("/guru/rpp");
     revalidatePath("/guru");
@@ -182,6 +185,8 @@ export async function updateRpp(id: string, values: RppFormValues): Promise<RppA
       await tx.rppExport.deleteMany({ where: { rppId: id } });
     });
 
+    await notifySchool("rpp.upsert", id);
+
     revalidatePath("/guru/rpp");
     revalidatePath(`/guru/rpp/${id}`);
     return { ok: true };
@@ -200,6 +205,7 @@ export async function softDeleteRpp(id: string): Promise<RppActionResult> {
       where: { id },
       data: { deletedAt: new Date() },
     });
+    await notifySchool("rpp.deleted", id);
     revalidatePath("/guru/rpp");
     revalidatePath("/guru");
     return { ok: true };

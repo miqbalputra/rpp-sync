@@ -33,6 +33,9 @@ Set minimal:
 | `NEXTAUTH_SECRET` | `openssl rand -base64 32` |
 | `ADMIN_PASSWORD` | password kuat untuk admin awal (WAJIB) |
 | `SEED_DEMO` | kosongkan; set `true` hanya bila ingin data contoh |
+| `SCHOOL_INTEGRATION_API_TOKEN` | token acak khusus aplikasi sekolah |
+| `SCHOOL_INTEGRATION_WEBHOOK_URL` | `https://sekolah.example/api/integrations/rpp/webhook` |
+| `SCHOOL_INTEGRATION_WEBHOOK_SECRET` | secret HMAC acak yang sama di aplikasi sekolah |
 
 > Generate `NEXTAUTH_SECRET` di terminal VPS: `openssl rand -base64 32`.
 

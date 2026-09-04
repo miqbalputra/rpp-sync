@@ -16,6 +16,7 @@ export async function getPromesByMapelKelas(mapelId: string, kelasId: string) {
     where: {
       mapelId,
       kelasId,
+      deletedAt: null,
       mapel: { deletedAt: null },
       kelas: { deletedAt: null },
     },
@@ -26,6 +27,7 @@ export async function getPromesByMapelKelas(mapelId: string, kelasId: string) {
 export async function listActivePromes(): Promise<PromesWithRefs[]> {
   return prisma.promes.findMany({
     where: {
+      deletedAt: null,
       mapel: { deletedAt: null },
       kelas: { deletedAt: null },
     },
@@ -70,6 +72,7 @@ export async function getPromesForGuru(guruId: string) {
   const promes = await prisma.promes.findMany({
     where: {
       OR: pairs.map((pair) => ({ mapelId: pair.mapelId, kelasId: pair.kelasId })),
+      deletedAt: null,
       mapel: { deletedAt: null },
       kelas: { deletedAt: null },
     },
