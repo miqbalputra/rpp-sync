@@ -103,6 +103,10 @@ model User {
   notifikasiUntuk   Notifikasi[]      @relation("NotifikasiUntuk")
   notifikasiDibaca  NotifikasiDibaca[]
 
+  chatSebagaiGuru   ChatConversation[] @relation("ChatConversationGuru")
+  chatSebagaiPj     ChatConversation[] @relation("ChatConversationPj")
+  chatMessages      ChatMessage[]      @relation("ChatMessageSender")
+
   @@map("users")
 }
 
@@ -198,6 +202,40 @@ model Promes {
   @@unique([mapelId, kelasId])
   @@index([kelasId, mapelId])
   @@map("promes")
+}
+
+// Percakapan privat antara satu Guru dan satu Kabag/PJ Diniyyah.
+model ChatConversation {
+  id        String   @id @default(cuid())
+  guruId    String
+  pjId      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guru     User        @relation("ChatConversationGuru", fields: [guruId], references: [id], onDelete: Cascade)
+  pj       User        @relation("ChatConversationPj", fields: [pjId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@unique([guruId, pjId])
+  @@index([guruId, updatedAt])
+  @@index([pjId, updatedAt])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  isi            String   @db.Text
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User             @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+  @@map("chat_messages")
 }
 
 model Rpp {

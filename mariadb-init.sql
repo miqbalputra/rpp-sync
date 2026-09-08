@@ -7,8 +7,9 @@
 --   3. Copy-paste SELURUH isi file ini lalu jalankan.
 --   4. Deploy aplikasi (Coolify). Saat start, `prisma migrate deploy` akan
 --      melihat migrasi `20260721000000_init`, `20260722000000_add_no_rpp`,
---      `20260723000000_add_ai_config`, `20260818000000_add_rpp_upload`, dan
---      `20260818010000_add_promes` sudah tercatat (baris _prisma_migrations
+--      `20260723000000_add_ai_config`, `20260818000000_add_rpp_upload`,
+--      `20260818010000_add_promes`, dan `20260909010000_add_chat` sudah
+--      tercatat (baris _prisma_migrations
 --      di bawah) → dilewati. Promes juga tersedia pada init.
 --      `db:seed` upsert admin (sudah ada → no-op).
 --
@@ -106,6 +107,32 @@ CREATE TABLE `promes` (
 
     UNIQUE INDEX `promes_mapelId_kelasId_key`(`mapelId`, `kelasId`),
     INDEX `promes_kelasId_mapelId_idx`(`kelasId`, `mapelId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `chat_conversations` (
+    `id` VARCHAR(191) NOT NULL,
+    `guruId` VARCHAR(191) NOT NULL,
+    `pjId` VARCHAR(191) NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `chat_conversations_guruId_pjId_key`(`guruId`, `pjId`),
+    INDEX `chat_conversations_guruId_updatedAt_idx`(`guruId`, `updatedAt`),
+    INDEX `chat_conversations_pjId_updatedAt_idx`(`pjId`, `updatedAt`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE `chat_messages` (
+    `id` VARCHAR(191) NOT NULL,
+    `conversationId` VARCHAR(191) NOT NULL,
+    `senderId` VARCHAR(191) NOT NULL,
+    `isi` TEXT NOT NULL,
+    `readAt` DATETIME(3) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    INDEX `chat_messages_conversationId_createdAt_idx`(`conversationId`, `createdAt`),
+    INDEX `chat_messages_senderId_createdAt_idx`(`senderId`, `createdAt`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -250,6 +277,10 @@ ALTER TABLE `penugasan` ADD CONSTRAINT `penugasan_mapelId_fkey` FOREIGN KEY (`ma
 ALTER TABLE `penugasan` ADD CONSTRAINT `penugasan_kelasId_fkey` FOREIGN KEY (`kelasId`) REFERENCES `kelas`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `promes` ADD CONSTRAINT `promes_mapelId_fkey` FOREIGN KEY (`mapelId`) REFERENCES `mapels`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `promes` ADD CONSTRAINT `promes_kelasId_fkey` FOREIGN KEY (`kelasId`) REFERENCES `kelas`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `chat_conversations` ADD CONSTRAINT `chat_conversations_guruId_fkey` FOREIGN KEY (`guruId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `chat_conversations` ADD CONSTRAINT `chat_conversations_pjId_fkey` FOREIGN KEY (`pjId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `chat_messages` ADD CONSTRAINT `chat_messages_conversationId_fkey` FOREIGN KEY (`conversationId`) REFERENCES `chat_conversations`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `chat_messages` ADD CONSTRAINT `chat_messages_senderId_fkey` FOREIGN KEY (`senderId`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE `rpp` ADD CONSTRAINT `rpp_guruId_fkey` FOREIGN KEY (`guruId`) REFERENCES `gurus`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE `rpp` ADD CONSTRAINT `rpp_mapelId_fkey` FOREIGN KEY (`mapelId`) REFERENCES `mapels`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE `rpp` ADD CONSTRAINT `rpp_kelasId_fkey` FOREIGN KEY (`kelasId`) REFERENCES `kelas`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -324,6 +355,15 @@ VALUES (
     'd9e1f0b7-2f0c-4b4b-9d6a-5a7405e1f2f5',
     '3e110aa8b60372ba96fcc18cf2b14a364f7bb60f7b665a9c0bb0101a605bf39f',
     NOW(3), '20260818010000_add_promes', NULL, NULL, NOW(3), 1
+)
+ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
+
+-- Penanda chat privat sudah dibuat oleh skema init.
+INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
+VALUES (
+    'a3f0c97d-1d7e-4bf4-9c76-8d2a1e5f4b60',
+    'ee594204433582266d8345e7c37813c795002d4ed167fcf86367d4b0b873a881',
+    NOW(3), '20260909010000_add_chat', NULL, NULL, NOW(3), 1
 )
 ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
 

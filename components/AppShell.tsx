@@ -6,6 +6,7 @@ import { useSidebar } from "@/context/SidebarContext";
 import { Sidebar, type ShellVariant } from "./Sidebar";
 import { AppHeader } from "./AppHeader";
 import { DeveloperCredit } from "./DeveloperCredit";
+import { ChatWidget } from "./chat/ChatWidget";
 import type { NotifData } from "@/lib/notifikasi/queries";
 
 export function AppShell({
@@ -45,6 +46,9 @@ export function AppShell({
           <DeveloperCredit />
         </footer>
       </div>
+      {(user?.role === "GURU" || user?.role === "PJ_DINIYYAH") && user.id && (
+        <ChatWidget currentUserId={user.id} role={user.role} />
+      )}
     </div>
   );
 }

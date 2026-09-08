@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import {
   LayoutDashboard, Users, BookOpen, School, Link2, Trash2,
-  FileText, Search, CalendarClock, Sparkles, type LucideIcon,
+  FileText, Search, CalendarClock, Sparkles, MessageCircle, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/context/SidebarContext";
@@ -34,6 +34,7 @@ const NAVS: Record<ShellVariant, NavEntry[]> = {
     { href: "/guru", label: "Dashboard", icon: LayoutDashboard },
     { href: "/guru/rpp", label: "RPP Saya", icon: FileText },
     { href: "/guru/promes", label: "Promes Saya", icon: BookOpen },
+    { href: "/chat", label: "Chat", icon: MessageCircle },
     { href: "/guru/referensi", label: "Referensi", icon: Search },
     { href: "/guru/sampah", label: "Sampah", icon: Trash2 },
   ],
@@ -44,6 +45,7 @@ const NAVS: Record<ShellVariant, NavEntry[]> = {
     { href: "/pj", label: "Dashboard", icon: LayoutDashboard },
     { href: "/jadwal", label: "Jadwal", icon: CalendarClock },
     { href: "/promes", label: "Promes", icon: Link2 },
+    { href: "/chat", label: "Chat", icon: MessageCircle },
   ],
 };
 
