@@ -6,3 +6,5 @@ export const SendChatMessageSchema = z.object({
 });
 
 export const ChatConversationIdSchema = z.string().min(1, "Percakapan tidak valid");
+
+export const ChatMessageIdSchema = z.string().min(1, "Pesan tidak valid");

@@ -228,6 +228,7 @@ model ChatMessage {
   senderId       String
   isi            String   @db.Text
   readAt         DateTime?
+  deletedAt      DateTime?
   createdAt      DateTime @default(now())
 
   conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

@@ -5,14 +5,32 @@ import {
   ArrowLeft,
   Loader2,
   MessageCircle,
+  MoreVertical,
   Search,
   Send,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 
 type ChatRole = "GURU" | "PJ_DINIYYAH";
@@ -29,13 +47,14 @@ type ChatMessage = {
   senderId: string;
   createdAt: string;
   readAt: string | null;
+  deletedAt: string | null;
   sender?: ChatPerson;
 };
 
 type ConversationSummary = {
   id: string;
   participant: ChatPerson;
-  lastMessage: { isi: string; createdAt: string; senderId: string } | null;
+  lastMessage: { isi: string; createdAt: string; senderId: string; deletedAt: string | null } | null;
   unreadCount: number;
   updatedAt: string;
 };
@@ -97,6 +116,9 @@ export function ChatClient({
   const [loadingList, setLoadingList] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const selectionInitialized = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -259,6 +281,31 @@ export function ChatClient({
     }
   };
 
+  const deleteMessage = async () => {
+    if (!deleteTarget || !selectedId || deletingMessageId) return;
+
+    try {
+      setDeleteError(null);
+      setDeletingMessageId(deleteTarget.id);
+      const response = await fetch(`/api/chat/${selectedId}/messages/${deleteTarget.id}`, { method: "DELETE" });
+      const payload = (await response.json()) as { deletedAt?: string; error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Pesan belum dapat dihapus.");
+
+      const deletedAt = payload.deletedAt ?? new Date().toISOString();
+      setMessages((current) => current.map((message) => message.id === deleteTarget.id
+        ? { ...message, isi: "Pesan ini telah dihapus", deletedAt }
+        : message));
+      setDeleteTarget(null);
+      setDeleteError(null);
+      setError(null);
+      await loadList();
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : "Pesan belum dapat dihapus.");
+    } finally {
+      setDeletingMessageId(null);
+    }
+  };
+
   const title = role === "GURU" ? "Chat Kabag / Kurikulum" : "Chat Guru";
   const subtitle = "Pesan pribadi dan langsung";
   const panelClass = mode === "widget"
@@ -396,14 +443,36 @@ export function ChatClient({
                   <div className="space-y-3">
                     {messages.map((message) => {
                       const own = message.senderId === currentUserId;
+                      const deleted = Boolean(message.deletedAt);
                       return (
                         <div key={message.id} className={cn("flex", own ? "justify-end" : "justify-start")}>
                           <div className={cn(
                             "max-w-[min(85%,34rem)] rounded-2xl px-3.5 py-2.5 shadow-sm",
-                            own ? "rounded-br-md bg-blue-600 text-white" : "rounded-bl-md border border-slate-200 bg-slate-100 text-slate-800 dark:border-gray-800 dark:bg-gray-800 dark:text-white/90",
+                            deleted
+                              ? "rounded-2xl border border-slate-200 bg-slate-100 text-slate-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-400"
+                              : own
+                                ? "rounded-br-md bg-blue-600 text-white"
+                                : "rounded-bl-md border border-slate-200 bg-slate-100 text-slate-800 dark:border-gray-800 dark:bg-gray-800 dark:text-white/90",
                           )}>
-                            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.isi}</p>
-                            <p className={cn("mt-1 flex items-center justify-end gap-1 text-[11px]", own ? "text-blue-100" : "text-slate-500 dark:text-gray-400")}>
+                            <div className="flex items-start gap-2">
+                              <p className={cn("min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed", deleted && "italic")}>{deleted ? "Pesan ini telah dihapus" : message.isi}</p>
+                              {own && !deleted && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button type="button" className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white/70 transition hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70" aria-label="Aksi pesan">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="min-w-[11rem]">
+                                    <DropdownMenuItem onSelect={() => { setDeleteError(null); setDeleteTarget(message); }} className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
+                                      <Trash2 className="h-4 w-4" />
+                                      Hapus pesan
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </div>
+                            <p className={cn("mt-1 flex items-center justify-end gap-1 text-[11px]", deleted ? "text-slate-400 dark:text-gray-500" : own ? "text-blue-100" : "text-slate-500 dark:text-gray-400")}>
                               {formatTime(message.createdAt)}{own && <span aria-label={message.readAt ? "Sudah dibaca" : "Terkirim"}>{message.readAt ? " · ✓✓" : " · ✓"}</span>}
                             </p>
                           </div>
@@ -444,6 +513,38 @@ export function ChatClient({
           )}
         </section>
       </div>
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deletingMessageId) {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus pesan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Pesan ini akan dihapus untuk semua peserta chat.
+              {deleteError && <span className="mt-2 block text-red-600 dark:text-red-400">{deleteError}</span>}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(deletingMessageId)}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteMessage();
+              }}
+              disabled={Boolean(deletingMessageId)}
+            >
+              {deletingMessageId ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              Hapus pesan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

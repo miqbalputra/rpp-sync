@@ -8,7 +8,8 @@
 --   4. Deploy aplikasi (Coolify). Saat start, `prisma migrate deploy` akan
 --      melihat migrasi `20260721000000_init`, `20260722000000_add_no_rpp`,
 --      `20260723000000_add_ai_config`, `20260818000000_add_rpp_upload`,
---      `20260818010000_add_promes`, dan `20260909010000_add_chat` sudah
+--      `20260818010000_add_promes`, `20260909010000_add_chat`, dan
+--      `20260909020000_add_chat_message_deletion` sudah
 --      tercatat (baris _prisma_migrations
 --      di bawah) → dilewati. Promes juga tersedia pada init.
 --      `db:seed` upsert admin (sudah ada → no-op).
@@ -129,6 +130,7 @@ CREATE TABLE `chat_messages` (
     `senderId` VARCHAR(191) NOT NULL,
     `isi` TEXT NOT NULL,
     `readAt` DATETIME(3) NULL,
+    `deletedAt` DATETIME(3) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     INDEX `chat_messages_conversationId_createdAt_idx`(`conversationId`, `createdAt`),
@@ -364,6 +366,15 @@ VALUES (
     'a3f0c97d-1d7e-4bf4-9c76-8d2a1e5f4b60',
     'ee594204433582266d8345e7c37813c795002d4ed167fcf86367d4b0b873a881',
     NOW(3), '20260909010000_add_chat', NULL, NULL, NOW(3), 1
+)
+ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
+
+-- Penanda penghapusan pesan chat sudah dibuat oleh skema init.
+INSERT INTO `_prisma_migrations` (`id`, `checksum`, `finished_at`, `migration_name`, `logs`, `rolled_back_at`, `started_at`, `applied_steps_count`)
+VALUES (
+    'b4f1d8a2-6c3e-4a90-9f12-7e5b3d8c6a41',
+    '434652ba306cfbb906c850e1afbe2e383f9970e505be6ce3bafe97e797e899a5',
+    NOW(3), '20260909020000_add_chat_message_deletion', NULL, NULL, NOW(3), 1
 )
 ON DUPLICATE KEY UPDATE `checksum` = VALUES(`checksum`);
 
