@@ -39,7 +39,7 @@ export function ChatWidget({ currentUserId, role }: { currentUserId: string; rol
         </button>
       )}
       {open && (
-        <div className="fixed bottom-5 right-5 z-40 max-sm:bottom-0 max-sm:right-0">
+        <div className="fixed bottom-5 right-5 z-40 max-md:bottom-0 max-md:right-0">
           <ChatClient currentUserId={currentUserId} role={role} mode="widget" onClose={() => setOpen(false)} onUnreadCount={setUnreadCount} />
         </div>
       )}
