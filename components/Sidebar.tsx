@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import {
   LayoutDashboard, Users, BookOpen, School, Link2, Trash2,
-  FileText, Search, CalendarClock, Sparkles, MessageCircle, type LucideIcon,
+  FileText, Search, CalendarClock, Sparkles, MessageCircle, Trophy, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/context/SidebarContext";
@@ -26,6 +26,7 @@ const NAVS: Record<ShellVariant, NavEntry[]> = {
     { href: "/admin/kelas", label: "Kelas", icon: School },
     { href: "/admin/penugasan", label: "Penugasan", icon: Link2 },
     { href: "/jadwal", label: "Jadwal", icon: CalendarClock },
+    { href: "/laporan-kedisiplinan", label: "Kedisiplinan RPP", icon: Trophy },
     { href: "/promes", label: "Promes", icon: Link2 },
     { href: "/admin/ai", label: "Pengaturan AI", icon: Sparkles },
     { href: "/admin/recycle-bin", label: "Sampah", icon: Trash2 },
@@ -44,6 +45,7 @@ const NAVS: Record<ShellVariant, NavEntry[]> = {
   pj: [
     { href: "/pj", label: "Dashboard", icon: LayoutDashboard },
     { href: "/jadwal", label: "Jadwal", icon: CalendarClock },
+    { href: "/laporan-kedisiplinan", label: "Kedisiplinan RPP", icon: Trophy },
     { href: "/promes", label: "Promes", icon: Link2 },
     { href: "/chat", label: "Chat", icon: MessageCircle },
   ],
