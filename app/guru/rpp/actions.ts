@@ -2,8 +2,11 @@
 "use server";
 import { prisma } from "@/lib/db";
 import { requireGuru } from "@/lib/auth-guard";
-import { getGuruIdFromSession, assertOwnsRpp, getNamaKepalaSekolah, assertGuruPenugasan } from "@/lib/rpp/queries";
-import { RppFormSchema, RppFormValues, RppActionResult, AiDraft } from "@/lib/rpp/schema";
+import { auth } from "@/lib/auth";
+import { saveRpp, rppSaveError } from "@/lib/rpp/save";
+import { completeRppSave } from "@/lib/rpp/save-effects";
+import { getGuruIdFromSession, assertOwnsRpp, getNamaKepalaSekolah } from "@/lib/rpp/queries";
+import { RppFormValues, RppActionResult, AiDraft } from "@/lib/rpp/schema";
 import { getOrCreateExport, ExportTipe } from "@/lib/rpp/export";
 import { revalidatePath } from "next/cache";
 import { getAiConfig } from "@/lib/ai/client";
@@ -14,81 +17,22 @@ function getActionErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-/** Helper simpan RPP baru. Dipakai createRpp (manual) & createRppAi (AI). */
-async function persistRpp(
-  values: RppFormValues,
-  session: Awaited<ReturnType<typeof requireGuru>>,
-  opts: { ai: boolean }
-): Promise<RppActionResult> {
-  try {
-    const guruId = await getGuruIdFromSession(session);
-    if (!guruId) return { ok: false, error: "Profil guru tidak ditemukan" };
-
-    const parsed = RppFormSchema.safeParse(values);
-    if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0].message };
-    }
-    const d = parsed.data;
-    await assertGuruPenugasan(guruId, d.mapelId, d.kelasId);
-
-    const tanggalPengesahan = new Date(d.tanggalPengesahan + "T00:00:00");
-
-    const rpp = await prisma.$transaction(async (tx) => {
-      const rpp = await tx.rpp.create({
-        data: {
-          guruId,
-          mapelId: d.mapelId,
-          kelasId: d.kelasId,
-          noRpp: d.noRpp?.trim() || null,
-          materi: d.materi.trim(),
-          alokasiWaktu: d.alokasiWaktu.trim(),
-          tujuanPembelajaran: d.tujuanPembelajaran,
-          status: "DRAFT",
-          tanggalPengesahan,
-          dibuatOleh: session.user.id,
-          dibuatDenganAI: opts.ai,
-          metodeInput: opts.ai ? "AI" : "MANUAL",
-          pertemuan: {
-            create: d.pertemuan.map((p, i) => ({
-              urutan: i + 1,
-              isiKegiatan: p.isiKegiatan,
-              tanggal: p.tanggal ? new Date(p.tanggal + "T00:00:00") : null,
-            })),
-          },
-          penilaian: {
-            create: {
-              pengetahuan: d.penilaian.pengetahuan,
-              keterampilan: d.penilaian.keterampilan,
-              sikap: d.penilaian.sikap,
-            },
-          },
-        },
-      });
-      return rpp;
-    });
-
-    await notifySchool("rpp.upsert", rpp.id);
-
-    revalidatePath("/guru/rpp");
-    revalidatePath("/guru");
-    return { ok: true };
-  } catch (e: unknown) {
-    return { ok: false, error: getActionErrorMessage(e, "Gagal menyimpan RPP") };
-  }
-}
-
+/** Legacy Server Actions remain available to already-open clients. */
 export async function createRpp(values: RppFormValues): Promise<RppActionResult> {
-  const session = await requireGuru();
-  return persistRpp(values, session, { ai: false });
+  try {
+    const result = await saveRpp(values, await auth(), { ai: false });
+    if (result.ok) completeRppSave(result.id);
+    return result;
+  } catch (error) { return rppSaveError(error, "legacy-create"); }
 }
 
-/** Simpan RPP yang dibuat lewat flow AI (flag dibuatDenganAI = true). */
 export async function createRppAi(values: RppFormValues): Promise<RppActionResult> {
-  const session = await requireGuru();
-  if (!(await getAiConfig())) {
-    return { ok: false, error: "Fitur AI belum diaktifkan atau belum dikonfigurasi Admin." };
-  }
-  return persistRpp(values, session, { ai: true });
+  try {
+    if (!(await getAiConfig())) return { ok: false, error: "Fitur AI belum diaktifkan atau belum dikonfigurasi Admin." };
+    const result = await saveRpp(values, await auth(), { ai: true });
+    if (result.ok) completeRppSave(result.id);
+    return result;
+  } catch (error) { return rppSaveError(error, "legacy-create-ai"); }
 }
 
 type GenerateOutcome = { ok: true; draft: AiDraft } | { ok: false; error: string };
@@ -121,78 +65,11 @@ export async function generateRppDraft(formData: FormData): Promise<GenerateOutc
 }
 
 export async function updateRpp(id: string, values: RppFormValues): Promise<RppActionResult> {
-  const session = await requireGuru();
   try {
-    const guruId = await getGuruIdFromSession(session);
-    if (!guruId) return { ok: false, error: "Profil guru tidak ditemukan" };
-
-    const ownedRpp = await assertOwnsRpp(id, guruId); // throw jika bukan miliknya
-    if (ownedRpp.metodeInput === "UPLOAD") {
-      return { ok: false, error: "RPP PDF tidak memiliki form edit terstruktur" };
-    }
-
-    const parsed = RppFormSchema.safeParse(values);
-    if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0].message };
-    }
-    const d = parsed.data;
-    await assertGuruPenugasan(guruId, d.mapelId, d.kelasId);
-
-    const tanggalPengesahan = new Date(d.tanggalPengesahan + "T00:00:00");
-
-    await prisma.$transaction(async (tx) => {
-      await tx.rpp.update({
-        where: { id },
-        data: {
-          mapelId: d.mapelId,
-          kelasId: d.kelasId,
-          noRpp: d.noRpp?.trim() || null,
-          materi: d.materi.trim(),
-          alokasiWaktu: d.alokasiWaktu.trim(),
-          tujuanPembelajaran: d.tujuanPembelajaran,
-          tanggalPengesahan,
-        },
-      });
-
-      // Replace pertemuan (hapus semua, insert ulang dengan urutan baru)
-      await tx.rppPertemuan.deleteMany({ where: { rppId: id } });
-      await tx.rppPertemuan.createMany({
-        data: d.pertemuan.map((p, i) => ({
-          rppId: id,
-          urutan: i + 1,
-          isiKegiatan: p.isiKegiatan,
-          tanggal: p.tanggal ? new Date(p.tanggal + "T00:00:00") : null,
-        })),
-      });
-
-      // Upsert penilaian
-      await tx.rppPenilaian.upsert({
-        where: { rppId: id },
-        create: {
-          rppId: id,
-          pengetahuan: d.penilaian.pengetahuan,
-          keterampilan: d.penilaian.keterampilan,
-          sikap: d.penilaian.sikap,
-        },
-        update: {
-          pengetahuan: d.penilaian.pengetahuan,
-          keterampilan: d.penilaian.keterampilan,
-          sikap: d.penilaian.sikap,
-        },
-      });
-
-      // Invalidate cache export (akan di-regenerate saat diminta)
-      await tx.rppExport.deleteMany({ where: { rppId: id } });
-    });
-
-    await notifySchool("rpp.upsert", id);
-
-    revalidatePath("/guru/rpp");
-    revalidatePath(`/guru/rpp/${id}`);
-    return { ok: true };
-  } catch (e: unknown) {
-    return { ok: false, error: getActionErrorMessage(e, "Gagal menyimpan RPP") };
-  }
+    const result = await saveRpp(values, await auth(), { ai: false, id });
+    if (result.ok) completeRppSave(result.id);
+    return result;
+  } catch (error) { return rppSaveError(error, "legacy-update"); }
 }
 
 export async function softDeleteRpp(id: string): Promise<RppActionResult> {

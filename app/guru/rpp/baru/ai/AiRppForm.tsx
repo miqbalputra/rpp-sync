@@ -1,22 +1,25 @@
 "use client";
 // Form 2-langkah: (1) pilih mapel+kelas & upload foto → generate draft via AI;
 // (2) review & edit draft (reuse RppForm) → simpan (createRppAi, flag AI).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2, Camera, RefreshCw } from "lucide-react";
 import RppForm from "../../RppForm";
-import { createRppAi, generateRppDraft } from "../../actions";
+import { generateRppDraft } from "../../actions";
+import { listRppDrafts, newSubmissionId, rppDraftKey, writeRppDraft } from "@/lib/rpp/draft-storage";
 import type { RppFormValues, AiDraft } from "@/lib/rpp/schema";
 import { getErrorMessage } from "@/lib/errors";
 
 type KelasOpt = { id: string; namaKelas: string; gender: string };
 
 export default function AiRppForm({
+  userId,
   mapelOptions,
   kelasByMapel,
   namaKepalaSekolah,
   namaUstadz,
 }: {
+  userId: string;
   mapelOptions: { id: string; namaMapel: string }[];
   kelasByMapel: Record<string, KelasOpt[]>;
   namaKepalaSekolah: string | null;
@@ -30,6 +33,20 @@ export default function AiRppForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<AiDraft | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = listRppDrafts(localStorage, rppDraftKey(userId, "new:ai"))[0]?.draft;
+        if (saved) {
+          setMapelId(saved.values.mapelId);
+          setKelasId(saved.values.kelasId);
+          setDraft(saved.values);
+        }
+      } catch { setError("Cadangan draf tidak dapat dibaca. Cadangan lama tetap disimpan di browser ini."); }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [userId]);
 
   const kelasOptions: KelasOpt[] = mapelId ? kelasByMapel[mapelId] ?? [] : [];
 
@@ -67,6 +84,14 @@ export default function AiRppForm({
   }
 
   function resetToStep1() {
+    // Keep the previous version downloadable while allowing a genuinely new generation.
+    try {
+      const key = rppDraftKey(userId, "new:ai");
+      for (const entry of listRppDrafts(localStorage, key)) {
+        writeRppDraft(localStorage, `${key}:archive:${newSubmissionId()}`, entry.draft);
+        localStorage.removeItem(entry.key);
+      }
+    } catch { setError("Cadangan belum dapat disimpan. Unduh cadangan sebelum mengganti foto."); return; }
     setDraft(null);
   }
 
@@ -100,7 +125,8 @@ export default function AiRppForm({
           </Button>
         </div>
         <RppForm
-          action={createRppAi}
+          userId={userId}
+          ai
           mapelOptions={mapelOptions}
           kelasByMapel={kelasByMapel}
           namaKepalaSekolah={namaKepalaSekolah}

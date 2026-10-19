@@ -1,36 +1,77 @@
 "use client";
 // Form RPP (PRD §5.1) — React Hook Form + useFieldArray untuk pertemuan dinamis.
-import { useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RppFormSchema, RppFormValues, RppActionResult } from "@/lib/rpp/schema";
+import { RppFormSchema, RppSaveResultSchema, type RppFormValues } from "@/lib/rpp/schema";
+import { finishRppDraft, listRppDrafts, newSubmissionId, rppDraftKey, writeRppDraft, type RppLocalDraft } from "@/lib/rpp/draft-storage";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { AutoNumberTextarea } from "./AutoNumberTextarea";
 
 type KelasOpt = { id: string; namaKelas: string; gender: string };
-
-export default function RppForm({
-  action,
-  mapelOptions,
-  kelasByMapel,
-  namaKepalaSekolah,
-  namaUstadz,
-  defaultValues,
-  submitLabel = "Simpan",
-}: {
-  action: (values: RppFormValues) => Promise<RppActionResult> | RppActionResult;
+type RppFormProps = {
+  userId: string;
+  rppId?: string;
+  expectedUpdatedAt?: string;
+  ai?: boolean;
   mapelOptions: { id: string; namaMapel: string }[];
   kelasByMapel: Record<string, KelasOpt[]>;
   namaKepalaSekolah: string | null;
   namaUstadz: string;
   defaultValues?: RppFormValues;
   submitLabel?: string;
-}) {
+};
+const subscribeHydration = () => () => {};
+
+export default function RppForm(props: RppFormProps) {
+  const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
+  if (!hydrated) return <p role="status">Menyiapkan formulir dan cadangan draf…</p>;
+  return <DraftRppForm key={`${props.userId}:${props.rppId ?? (props.ai ? "ai" : "manual")}`} {...props} />;
+}
+
+function DraftRppForm({
+  userId,
+  rppId,
+  expectedUpdatedAt,
+  ai = false,
+  mapelOptions,
+  kelasByMapel,
+  namaKepalaSekolah,
+  namaUstadz,
+  defaultValues,
+  submitLabel = "Simpan",
+}: RppFormProps) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [savedRppId, setSavedRppId] = useState<string | null>(null);
+  const storageKey = rppDraftKey(userId, rppId ? `edit:${rppId}` : ai ? "new:ai" : "new:manual");
+  const [recovery] = useState(() => {
+    try {
+      const latest = listRppDrafts(localStorage, storageKey)[0];
+      const occupied = !latest && localStorage.getItem(storageKey) !== null;
+      return { draft: latest?.draft ?? null, key: latest?.key ?? (occupied ? `${storageKey}:copy:${newSubmissionId()}` : storageKey), error: false };
+    }
+    catch { return { draft: null, error: true }; }
+  });
+  const staleDraft = Boolean(rppId && recovery.draft && recovery.draft.expectedUpdatedAt !== expectedUpdatedAt);
+  const [otherDrafts] = useState(() => {
+    try { return [...listRppDrafts(localStorage, storageKey).filter((entry) => staleDraft || entry.key !== recovery.key), ...listRppDrafts(localStorage, storageKey, true)]; }
+    catch { return []; }
+  });
+  const [backupState, setBackupState] = useState<"saved" | "unavailable" | "pending">(recovery.error ? "unavailable" : recovery.draft ? "saved" : "pending");
+  const submissionId = useRef(!staleDraft && recovery.draft ? recovery.draft.submissionId : newSubmissionId());
+  const baseUpdatedAt = staleDraft ? expectedUpdatedAt : recovery.draft?.expectedUpdatedAt ?? expectedUpdatedAt;
+  const savedToServer = useRef(false);
+  const backupAvailable = useRef(!recovery.error && Boolean(recovery.draft));
+  const inFlight = useRef(false);
+  const errorBox = useRef<HTMLDivElement>(null);
+  const lastWritten = useRef<string | null | undefined>(undefined);
+  const activeStorageKey = useRef(staleDraft ? `${storageKey}:copy:${newSubmissionId()}` : recovery.key ?? storageKey);
+  const dirty = useRef(Boolean(recovery.draft));
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -39,10 +80,12 @@ export default function RppForm({
     control,
     handleSubmit,
     setValue,
+    getValues,
+    subscribe,
     formState: { errors },
   } = useForm<RppFormValues>({
     resolver: zodResolver(RppFormSchema),
-    defaultValues: defaultValues ?? {
+    defaultValues: (!staleDraft ? recovery.draft?.values : null) ?? defaultValues ?? {
       mapelId: "",
       kelasId: "",
       noRpp: "",
@@ -60,23 +103,107 @@ export default function RppForm({
   const selectedMapel = useWatch({ control, name: "mapelId" });
   const kelasOptions: KelasOpt[] = selectedMapel ? kelasByMapel[selectedMapel] ?? [] : [];
 
-  const onSubmit = handleSubmit(async (values) => {
-    setServerError(null);
-    setSubmitting(true);
+  function backup(values: RppFormValues): void {
+    if (savedToServer.current) return;
+    const draft: RppLocalDraft = {
+      version: 1, submissionId: submissionId.current, savedAt: new Date().toISOString(),
+      expectedUpdatedAt: baseUpdatedAt, values,
+    };
     try {
-      const res = await action(values);
+      const current = localStorage.getItem(activeStorageKey.current);
+      // Preserve another tab's version instead of overwriting it.
+      if (lastWritten.current !== undefined && current !== lastWritten.current) {
+        activeStorageKey.current = `${storageKey}:copy:${newSubmissionId()}`;
+      }
+      writeRppDraft(localStorage, activeStorageKey.current, draft);
+      lastWritten.current = localStorage.getItem(activeStorageKey.current);
+      backupAvailable.current = true;
+      setBackupState("saved");
+    } catch { backupAvailable.current = false; setBackupState("unavailable"); }
+  }
+  const backupRef = useRef(backup);
+  useEffect(() => { backupRef.current = backup; });
+
+  useEffect(() => {
+    // Save every change immediately, including before a phone backgrounds the tab.
+    try { lastWritten.current = localStorage.getItem(activeStorageKey.current); } catch { /* surface the unavailable backup state */ }
+    const initialSave = window.setTimeout(() => backupRef.current(getValues()), 0);
+    const unsubscribe = subscribe({ formState: { values: true }, callback: ({ values }) => {
+      dirty.current = true;
+      backupRef.current(values);
+    } });
+    const flush = () => backupRef.current(getValues());
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      flush();
+      if (dirty.current && !savedToServer.current && !backupAvailable.current) { event.preventDefault(); event.returnValue = ""; }
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", flush);
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () => {
+      window.clearTimeout(initialSave);
+      unsubscribe();
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", flush);
+      window.removeEventListener("beforeunload", warnBeforeLeaving);
+    };
+  }, [getValues, storageKey, subscribe]);
+
+  useEffect(() => { if (serverError) errorBox.current?.focus(); }, [serverError]);
+
+  function downloadBackup(values = getValues()) {
+    const text = [
+      `RPP ${values.noRpp ?? ""}`, `Mapel: ${mapelOptions.find((m) => m.id === values.mapelId)?.namaMapel ?? values.mapelId}`,
+      `Kelas: ${kelasByMapel[values.mapelId]?.find((k) => k.id === values.kelasId)?.namaKelas ?? values.kelasId}`,
+      `Materi: ${values.materi}`, `Alokasi waktu: ${values.alokasiWaktu}`,
+      `Tujuan pembelajaran:\n${values.tujuanPembelajaran}`,
+      ...values.pertemuan.map((p, i) => `Pertemuan ${i + 1} (${p.tanggal ?? ""}):\n${p.isiKegiatan}`),
+      `Pengetahuan:\n${values.penilaian.pengetahuan}`, `Keterampilan:\n${values.penilaian.keterampilan}`,
+      `Sikap:\n${values.penilaian.sikap}`, `Tanggal pengesahan: ${values.tanggalPengesahan}`,
+    ].join("\n\n");
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url; link.download = "cadangan-rpp.txt"; link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => handleSubmit(async (values) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    backup(values);
+    setServerError(null);
+    setSessionExpired(false);
+    setSubmitting(true);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 30000);
+    try {
+      const response = await fetch("/api/rpp", {
+        method: rppId ? "PUT" : "POST", credentials: "same-origin", cache: "no-store", redirect: "error",
+        headers: { "Content-Type": "application/json" }, signal: controller.signal,
+        body: JSON.stringify({ values, userId, submissionId: submissionId.current, ai, ...(rppId ? { id: rppId, expectedUpdatedAt: baseUpdatedAt } : {}) }),
+      });
+      const res = RppSaveResultSchema.parse(await response.json());
       if (!res.ok) {
         setServerError(res.error);
-        setSubmitting(false);
+        setSessionExpired(res.code === "SESSION_EXPIRED");
+        if (res.id || (res.code === "CONFLICT" && rppId)) setSavedRppId(res.id ?? rppId!);
         return;
       }
-      router.push("/guru/rpp");
-      router.refresh();
-    } catch (e: unknown) {
-      setServerError(e instanceof Error ? e.message : "Terjadi kesalahan");
+      if (!response.ok || !res.id) throw new Error("Jawaban server tidak dapat dikonfirmasi");
+      savedToServer.current = true;
+      try { finishRppDraft(localStorage, storageKey, submissionId.current, values); } catch { /* retain the backup when storage is unavailable */ }
+      // A full navigation also refreshes stale code after deployment.
+      window.location.assign(`/guru/rpp/${encodeURIComponent(res.id)}`);
+    } catch {
+      setServerError("Belum ada konfirmasi dari server. Isian tetap ada di formulir. Periksa koneksi lalu coba Simpan lagi; pengiriman yang sama tidak akan membuat RPP ganda.");
+    } finally {
+      window.clearTimeout(timeout);
+      inFlight.current = false;
       setSubmitting(false);
     }
-  });
+  }, () => {
+    setServerError("Ada kolom wajib yang belum lengkap. Periksa kolom bertanda merah; isian tetap tersedia.");
+  })(event);
 
   const inputCls =
     "w-full h-11 rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 transition focus:border-brand-300 focus:ring-3 focus:ring-brand-500/20 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800";
@@ -87,11 +214,30 @@ export default function RppForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      <div role="status" className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
+        {backupState === "unavailable"
+          ? "Cadangan otomatis tidak tersedia di browser ini. Unduh cadangan agar isian tetap Anda miliki."
+          : backupState === "pending" ? "Menyiapkan cadangan otomatis…"
+          : staleDraft ? "RPP sudah berubah sejak draf dibuat. Form menampilkan versi server terbaru. Unduh cadangan versi lama di bawah untuk menggabungkan isian Anda."
+          : recovery.draft ? "Draf yang belum selesai dipulihkan dari browser ini. Tekan Simpan untuk menyimpannya ke server."
+          : "Isian dicadangkan otomatis di browser ini. Tekan Simpan untuk menyimpannya ke server."}
+        <button type="button" onClick={() => downloadBackup()} className="ml-2 font-semibold text-primary underline">Unduh cadangan</button>
+        {otherDrafts.length > 0 && <details className="mt-2">
+          <summary>Cadangan versi lain ({otherDrafts.length})</summary>
+          {otherDrafts.map((entry) => <button key={entry.key} type="button" onClick={() => downloadBackup(entry.draft.values)} className="mt-1 block text-primary underline">
+            Unduh {entry.draft.values.materi || "draf"} — {new Date(entry.draft.savedAt).toLocaleString("id-ID")}
+          </button>)}
+        </details>}
+      </div>
       {serverError && (
-        <div className="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-400">
+        <div ref={errorBox} role="alert" tabIndex={-1} className="rounded-lg border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/15 dark:text-error-400">
           {serverError}
+          {sessionExpired && <a className="ml-2 font-semibold underline" href={`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`}>Masuk kembali</a>}
+          {savedRppId && <a className="ml-2 font-semibold underline" href={`/guru/rpp/${encodeURIComponent(savedRppId)}/edit`}>Buka RPP tersimpan</a>}
         </div>
       )}
+
+      <fieldset disabled={submitting} className="min-w-0 space-y-6">
 
       {/* Header */}
       <section className={sectionCls}>
@@ -273,6 +419,7 @@ export default function RppForm({
         </div>
       </section>
 
+      </fieldset>
       <div className="flex gap-2 sticky bottom-0 -mx-1 bg-background/80 backdrop-blur-sm pt-3 pb-2 px-1 border-t border-border">
         <Button type="submit" size="lg" disabled={submitting} className="px-6">
           {submitting ? "Menyimpan…" : submitLabel}

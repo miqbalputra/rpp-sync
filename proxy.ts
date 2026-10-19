@@ -25,6 +25,7 @@ export default auth((req) => {
   // Endpoint NextAuth & asset statis: lewat.
   if (
     pathname.startsWith("/api/auth") ||
+    pathname === "/api/rpp" ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {

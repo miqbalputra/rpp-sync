@@ -2,7 +2,6 @@
 import { getRppFormProps } from "../../_load";
 import { loadRppForEdit } from "@/lib/rpp/queries";
 import RppForm from "../../RppForm";
-import { updateRpp } from "../../actions";
 import { notFound } from "next/navigation";
 import { redirect } from "next/navigation";
 
@@ -49,7 +48,9 @@ export default async function EditRppPage({
     <div className="max-w-3xl">
       <h1 className="text-2xl font-bold tracking-tight text-foreground mb-4">Edit RPP</h1>
       <RppForm
-        action={updateRpp.bind(null, id)}
+        userId={props.userId}
+        rppId={id}
+        expectedUpdatedAt={rpp.updatedAt.toISOString()}
         mapelOptions={props.mapelOptions}
         kelasByMapel={props.kelasByMapel}
         namaKepalaSekolah={props.namaKepalaSekolah}

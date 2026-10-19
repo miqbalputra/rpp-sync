@@ -44,6 +44,7 @@ export default async function NewRppAiPage() {
         Foto materi pembelajaran, AI akan membaca &amp; mengisi kolom RPP otomatis. Anda tetap memeriksa &amp; menyimpan.
       </p>
       <AiRppForm
+        userId={props.userId}
         mapelOptions={props.mapelOptions}
         kelasByMapel={props.kelasByMapel}
         namaKepalaSekolah={props.namaKepalaSekolah}

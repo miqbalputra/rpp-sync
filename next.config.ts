@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    serverActions: {
+      // Coolify/Cloudflare may forward an internal Host. Trust only the public app domain.
+      allowedOrigins: ["rpp.griyaquran.web.id"],
+    },
+  },
 };
 
 export default nextConfig;

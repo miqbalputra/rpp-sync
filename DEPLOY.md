@@ -115,3 +115,117 @@ di atas `prisma/prod/schema.prisma`).
 - Template gambar/PDF/Word export masih **placeholder** menunggu template asli.
 - Role Kepala Sekolah & PJ Diniyyah: skema + RBAC siap, alur approval penuh
   ditangguhkan ke v1.2.
+
+## 10. Pembaruan penyimpanan RPP — Coolify + Cloudflare Tunnel
+
+### Status MariaDB Degraded setelah migrasi
+
+Jika `healthcheck.sh --connect --innodb_initialized` menampilkan
+`World-writable config file '/var/lib/mysql/.my-healthcheck.cnf' is ignored`,
+klien mengabaikan kredensial healthcheck karena izin file terlalu longgar.
+Pada insiden migrasi ini, memperketat izin file tersebut memulihkan status
+MariaDB menjadi Running.
+
+Jalankan berikut di terminal **resource MariaDB**, hanya untuk pesan tersebut:
+
+```sh
+chmod 600 /var/lib/mysql/.my-healthcheck.cnf &&
+healthcheck.sh --connect --innodb_initialized
+printf 'HEALTHCHECK_EXIT=%s\n' "$?"
+```
+
+Nilai `0` berarti pemeriksaan berhasil; tunggu pemeriksaan berkala berikutnya
+dan refresh Coolify. Perintah ini hanya mengubah izin satu file konfigurasi,
+tanpa mengubah password, isi database, atau melakukan restart. Jangan tampilkan
+isi file tersebut karena berisi kredensial. Jika hasilnya tetap gagal, periksa
+pesan baru sebelum melakukan perubahan lain. Status Running belum memastikan
+seluruh berkas unggahan tersedia atau masalah penyimpanan RPP sudah selesai.
+
+### Lindungi database sebelum deploy
+
+1. Buat backup MariaDB dari resource database yang **sedang dipakai aplikasi**.
+   Pastikan backup berstatus berhasil dan simpan salinannya di luar home server.
+   Verifikasi dengan restore ke database sementara yang terpisah bila tersedia.
+2. Catat jumlah RPP dan contoh RPP terbaru sebelum pembaruan. Pemeriksaan berikut
+   hanya membaca data; jalankan pada database aktif melalui terminal database:
+
+   ```sql
+   SELECT COUNT(*) AS total_rpp FROM rpp;
+   SELECT id, materi, guruId, createdAt, updatedAt FROM rpp
+   ORDER BY createdAt DESC LIMIT 20;
+   SHOW COLUMNS FROM rpp_penilaian;
+   SHOW GRANTS FOR CURRENT_USER();
+   ```
+
+3. Pertahankan database, user database, dan volume MariaDB `/var/lib/mysql` yang
+   berisi data hasil migrasi. Pertahankan juga volume aplikasi `/app/storage` dan
+   `/app/public/exports`. Jangan membuat database pengganti saat redeploy aplikasi.
+4. Gunakan `NEXTAUTH_SECRET` yang sama dengan sebelum migrasi dan
+   `NEXTAUTH_URL=https://rpp.griyaquran.web.id`. Bila `AUTH_SECRET`/`AUTH_URL` juga
+   diset, pastikan nilainya konsisten dengan pasangan `NEXTAUTH_*`. Perubahan secret
+   membuat sesi lama tidak berlaku; secret juga dipakai untuk konfigurasi AI terenkripsi.
+
+### Pertahankan PDF unggahan saat migrasi
+
+Data `RppFile` di MariaDB menyimpan metadata dan lokasi berkas; PDF disimpan
+terpisah di `/app/storage/rpp-uploads`. Volume `/app/public/exports` hanya
+menyimpan hasil ekspor dan tidak mencakup PDF unggahan.
+
+Sebelum redeploy, cocokkan lokasi berkas yang tercatat di database dengan
+berkas di container aktif, volume lama, atau salinan VPS. Salin berkas yang
+ditemukan sebelum memasang volume baru, karena mount baru dapat menutupi
+isi direktori container yang sudah ada. Tambahkan volume persisten aplikasi
+untuk `/app/storage` dan pertahankan struktur subdirektori saat memulihkan PDF.
+Folder yang kosong atau tidak ada belum membuktikan salinan lain tidak tersedia;
+jangan menghapus metadata `RppFile` saat mencari berkasnya.
+
+### Terapkan pembaruan
+
+Dockerfile menjalankan `prisma migrate deploy` saat startup. Migrasi
+`20261017000000_expand_rpp_penilaian` hanya memperlebar tiga kolom penilaian dari
+string menjadi `TEXT`; tidak menghapus tabel atau baris. Kolom ini sebelumnya dapat
+menolak teks panjang yang sudah lolos validasi form. Jalankan pada salinan database
+untuk verifikasi sebelum produksi bila akses tersebut tersedia. Rollback kode aplikasi
+tetap kompatibel dengan kolom yang diperlebar.
+
+Jika tiga kolom tersebut sudah diperlebar manual sebelum deploy, biarkan migrasi
+ini tetap dijalankan oleh `prisma migrate deploy`. Mengulang definisi `TEXT NOT NULL`
+tersebut kompatibel dengan perubahan manual; Prisma kemudian mencatat migrasi
+sebagai diterapkan. Pada penerapan manual insiden ini, jumlah RPP sebelum dan
+sesudah perubahan tetap 95 dan ketiga kolom terkonfirmasi bertipe `text`.
+
+Jangan menjalankan `prisma migrate reset`, `db push --force-reset`, atau mengimpor
+ulang `mariadb-init.sql` ke database produksi yang sudah berisi data untuk pembaruan ini.
+
+Form manual, form edit, dan hasil AI menyimpan isian secara otomatis di browser,
+dengan kunci berbeda per akun/form. Cadangan dihapus dari daftar draf aktif hanya
+setelah server mengonfirmasi penyimpanan; versi berbeda tetap dapat diunduh.
+Cadangan browser berlaku pada perangkat dan domain yang sama, dan tidak dapat
+memulihkan isian yang hilang sebelum versi ini terpasang atau setelah penyimpanan
+browser dihapus. Tombol **Unduh cadangan** menyimpan salinan teks di perangkat guru.
+
+Penyimpanan form menggunakan endpoint JSON `/api/rpp` agar tidak bergantung pada ID
+Server Action dari build lama. Pengiriman ulang memakai ID draf yang sama sehingga
+respons yang terputus tidak membuat baris ganda. Edit dari versi lama ditolak bila
+RPP sudah berubah; pertemuan dan penilaian lama tetap utuh bila transaksi gagal.
+
+### Periksa Tunnel dan hasil deploy
+
+- Arahkan hostname publik ke proxy Coolify yang melayani aplikasi ini. Jika log
+  menyebut `x-forwarded-host ... does not match origin`, periksa penerusan Host dari
+  Tunnel/Traefik. `next.config.ts` mengizinkan origin publik aplikasi secara eksplisit
+  untuk Server Action yang masih dipakai fitur lain.
+- Pastikan rule Cloudflare tidak meng-cache halaman akun atau respons `/api/rpp`.
+  Endpoint penyimpanan mengirim `Cache-Control: no-store`.
+- Setelah backup dan deploy, cocokkan jumlah/contoh RPP dengan hasil sebelumnya.
+  Uji menggunakan akun uji: ketik draf, muat ulang, login ulang, lalu simpan. Periksa
+  hanya ada satu RPP ketika tombol Simpan dicoba lagi setelah respons terputus.
+- Cari log `[rpp.save]`, `P2000` (panjang kolom), `P1001` (koneksi database),
+  `Access denied` (akses database), `JWTSessionError` (sesi/secret), dan
+  `Invalid Server Actions request` (origin/proxy). Log penyimpanan baru mencatat
+  jenis operasi dan kode kesalahan tanpa menyalin isian guru.
+
+Pemeriksaan lokal: `npm run test:rpp`, `npm run lint`, dan `npm run build`.
+Tes penyimpanan memakai database SQLite sementara di direktori temp, terpisah dari
+database development maupun produksi; pengujian MariaDB/Tunnel tetap perlu dilakukan
+di lingkungan server setelah akses tersedia.

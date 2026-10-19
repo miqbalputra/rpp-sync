@@ -1,7 +1,6 @@
 // Halaman buat RPP manual (form penuh).
 import { getRppFormProps } from "../../_load";
 import RppForm from "../../RppForm";
-import { createRpp } from "../../actions";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -34,7 +33,7 @@ export default async function NewRppManualPage() {
       </Link>
       <h1 className="text-2xl font-bold tracking-tight text-foreground mb-4">Buat RPP Manual</h1>
       <RppForm
-        action={createRpp}
+        userId={props.userId}
         mapelOptions={props.mapelOptions}
         kelasByMapel={props.kelasByMapel}
         namaKepalaSekolah={props.namaKepalaSekolah}

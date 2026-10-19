@@ -304,9 +304,9 @@ model RppPertemuan {
 model RppPenilaian {
   id           String @id @default(cuid())
   rppId        String @unique
-  pengetahuan  String
-  keterampilan String
-  sikap       String
+  pengetahuan  String @db.Text
+  keterampilan String @db.Text
+  sikap       String @db.Text
 
   rpp          Rpp    @relation(fields: [rppId], references: [id], onDelete: Cascade)
 

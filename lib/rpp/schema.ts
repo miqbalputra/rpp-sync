@@ -33,6 +33,24 @@ export const RppUploadMetadataSchema = z.object({
 export type RppFormValues = z.infer<typeof RppFormSchema>;
 export type RppActionResult = { ok: true; id?: string } | { ok: false; error: string };
 
+export const RppSaveResultSchema = z.discriminatedUnion("ok", [
+  z.object({ ok: z.literal(true), id: z.string().min(1), updatedAt: z.string().datetime() }),
+  z.object({ ok: z.literal(false), error: z.string().min(1), code: z.string(), id: z.string().optional() }),
+]);
+export type RppSaveResult = z.infer<typeof RppSaveResultSchema>;
+
+export const RppSaveRequestSchema = z.object({
+  values: RppFormSchema,
+  userId: z.string().min(1),
+  submissionId: z.string().uuid(),
+  ai: z.boolean().default(false),
+});
+
+export const RppUpdateRequestSchema = RppSaveRequestSchema.extend({
+  id: z.string().min(1),
+  expectedUpdatedAt: z.string().datetime(),
+});
+
 // ----- Draft dari AI (subset konten RPP; tanpa mapel/kelas/noRpp/tanggal) -----
 export const AiDraftSchema = z.object({
   materi: z.string().min(1, "Materi wajib diisi"),

@@ -26,6 +26,7 @@ export async function getRppFormProps() {
     namaKepalaSekolah,
     namaUstadz: guru?.namaTampil ?? session?.user?.name ?? "",
     guruId,
+    userId: session!.user.id,
     canCreate: mapelOptions.length > 0,
   };
 }
